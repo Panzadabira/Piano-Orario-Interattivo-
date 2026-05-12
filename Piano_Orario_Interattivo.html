@@ -230,6 +230,22 @@
         let isUpdatingFromCloud = false;
         const appId = 'planner-rs-v1-main';
 
+        // --- FUNZIONE PER LEGGERE IL JSON DA GITHUB COME BACKUP/AVVIO ---
+        async function loadDataFromGitHub() {
+            try {
+                // Cerca il file piano_orario.json nella stessa cartella di GitHub
+                const response = await fetch('./piano_orario.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    rebuildTableFromData(data);
+                    return true;
+                }
+            } catch (error) {
+                console.log("Nessun JSON locale trovato su GitHub o errore di caricamento.");
+            }
+            return false;
+        }
+
         // --- INIZIALIZZAZIONE CLOUD ---
         try {
             const app = initializeApp(firebaseConfig);
@@ -245,15 +261,18 @@
                         setupCloudListener();
                     } else {
                         updateCloudUI('offline');
+                        loadDataFromGitHub(); // Fallback se offline
                     }
                 });
             }).catch(error => {
                 console.error("Autenticazione fallita:", error);
                 updateCloudUI('offline');
+                loadDataFromGitHub(); // Fallback se fallisce l'autenticazione
             });
         } catch (error) {
             console.error("Inizializzazione Firebase fallita:", error);
             updateCloudUI('offline');
+            loadDataFromGitHub(); // Fallback se fallisce l'avvio di Firebase
         }
 
         // --- GESTIONE STATO UI CLOUD ---
@@ -285,7 +304,7 @@
         function setupCloudListener() {
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state');
             
-            onSnapshot(docRef, (docSnap) => {
+            onSnapshot(docRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     isUpdatingFromCloud = true;
                     rebuildTableFromData(docSnap.data());
@@ -295,25 +314,34 @@
                         isUpdatingFromCloud = false;
                     }, 500);
                 } else {
-                    // Genera una tabella di base se il database è vuoto
-                    const initialData = {
-                        columns: [
-                            {name: 'RS 4', sub: ''}, 
-                            {name: 'RS 8', sub: ''}, 
-                            {name: 'RS 13', sub: ''}
-                        ],
-                        rows: [
-                            {name: 'Personale', color: 'blue'}, 
-                            {name: 'Istruzione', color: 'green'}
-                        ],
-                        tasks: []
-                    };
-                    rebuildTableFromData(initialData);
+                    // SE IL CLOUD È VUOTO, PROVA PRIMA A LEGGERE IL JSON DA GITHUB
+                    const loadedFromGithub = await loadDataFromGitHub();
+                    
+                    if (!loadedFromGithub) {
+                        // Genera una tabella di base se anche il file locale non esiste
+                        const initialData = {
+                            columns: [
+                                {name: 'RS 4', sub: ''}, 
+                                {name: 'RS 8', sub: ''}, 
+                                {name: 'RS 13', sub: ''}
+                            ],
+                            rows: [
+                                {name: 'Personale', color: 'blue'}, 
+                                {name: 'Istruzione', color: 'green'}
+                            ],
+                            tasks: []
+                        };
+                        rebuildTableFromData(initialData);
+                    } else {
+                        // Se ha caricato con successo il file da GitHub, salvalo sul Cloud!
+                        window.saveToCloud();
+                    }
                 }
                 updateCloudUI('synced');
             }, (err) => {
                 console.error("Errore onSnapshot:", err);
                 updateCloudUI('offline');
+                loadDataFromGitHub(); // Fallback se c'è un blocco di permessi
             });
         }
 
