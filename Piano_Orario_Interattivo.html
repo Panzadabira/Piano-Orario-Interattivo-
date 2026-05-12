@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piano Orario RS4 - RS15 (Interattivo Avanzato)</title>
+    <title>Piano Orario RS4 - RS15 (Cloud Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -29,15 +29,8 @@
             border: 2px dashed #9ca3af;
             border-radius: 0.5rem;
         }
-        /* Nasconde la scrollbar esteticamente ma permette lo scroll */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="p-6 md:p-12 text-gray-800">
@@ -47,17 +40,26 @@
         <div class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Visione d'Insieme: Piano Orario RS</h1>
-                <p class="text-gray-600">Trascina gli elementi, sposta le colonne e salva il tuo lavoro su file.</p>
+                <p class="text-gray-600">Sincronizzazione in tempo reale. Le tue modifiche si salvano automaticamente.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 
+                <!-- Indicatore di Stato Cloud -->
+                <div class="flex items-center gap-2 mr-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm" id="cloud-status-container">
+                    <div class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75" id="cloud-ping"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-gray-400" id="cloud-dot"></span>
+                    </div>
+                    <span id="cloud-text" class="text-xs font-semibold text-gray-600">Offline</span>
+                </div>
+
                 <!-- Azioni di Salvataggio -->
                 <div class="flex items-center gap-1 mr-2 pr-2 border-r border-gray-300">
-                    <button onclick="exportData()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Scarica un file JSON con il tuo lavoro">
+                    <button onclick="exportData()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Scarica backup JSON">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        Esporta
+                        Esporta JSON
                     </button>
-                    <button onclick="document.getElementById('importFile').click()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Carica un file JSON precedentemente salvato">
+                    <button onclick="document.getElementById('importFile').click()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Carica backup JSON">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                         Importa
                     </button>
@@ -82,25 +84,22 @@
         <!-- Matrix / Table -->
         <div class="bg-white rounded-xl table-container border border-gray-200 overflow-x-auto mb-8">
             <table id="mainTable" class="w-full text-left border-collapse min-w-[800px]">
-                <!-- Table Header -->
                 <thead>
                     <tr class="bg-gray-50 text-gray-700 text-sm uppercase tracking-wider border-b border-gray-200">
                         <th class="p-4 font-semibold w-1/6 border-r border-gray-200 bg-gray-100 sticky left-0 z-20">Categoria</th>
                         
-                        <!-- Colonna -->
                         <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
                             <div class="flex flex-col items-center justify-center">
                                 <span class="col-name text-gray-700">RS 4</span>
                                 <span class="col-sub text-xs font-normal text-gray-500 mt-1"></span>
                             </div>
                             <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
-                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1" title="Sposta a sinistra">&lt;</button>
-                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1" title="Modifica Colonna"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1" title="Sposta a destra">&gt;</button>
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
                             </div>
                         </th>
 
-                        <!-- Colonna -->
                         <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
                             <div class="flex flex-col items-center justify-center">
                                 <span class="col-name text-gray-700">RS 8</span>
@@ -113,7 +112,6 @@
                             </div>
                         </th>
 
-                        <!-- Colonna -->
                         <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
                             <div class="flex flex-col items-center justify-center">
                                 <span class="col-name text-gray-700">RS 13</span>
@@ -126,7 +124,6 @@
                             </div>
                         </th>
 
-                        <!-- Colonna -->
                         <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[180px]">
                             <div class="flex flex-col items-center justify-center">
                                 <span class="col-name text-gray-700">RS 14</span>
@@ -139,7 +136,6 @@
                             </div>
                         </th>
 
-                        <!-- Colonna -->
                         <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[180px]">
                             <div class="flex flex-col items-center justify-center">
                                 <span class="col-name text-gray-700">RS 15</span>
@@ -153,10 +149,7 @@
                         </th>
                     </tr>
                 </thead>
-                
-                <!-- Table Body -->
                 <tbody class="text-gray-800 text-sm">
-                    
                     <!-- Row: Personale -->
                     <tr class="border-b border-gray-200 transition duration-150">
                         <td class="p-4 font-semibold text-blue-700 bg-blue-50/50 border-r border-gray-200 sticky left-0 z-10">Personale</td>
@@ -173,7 +166,6 @@
                         <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
                         <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
                     </tr>
-
                     <!-- Row: Istruzione -->
                     <tr class="border-b border-gray-200 transition duration-150">
                         <td class="p-4 font-semibold text-green-700 bg-green-50/50 border-r border-gray-200 sticky left-0 z-10">Istruzione</td>
@@ -216,7 +208,6 @@
                             </div>
                         </td>
                     </tr>
-
                     <!-- Row: Logistica -->
                     <tr class="border-b border-gray-200 transition duration-150">
                         <td class="p-4 font-semibold text-orange-700 bg-orange-50/50 border-r border-gray-200 sticky left-0 z-10">Logistica</td>
@@ -241,7 +232,6 @@
                         </td>
                         <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
                     </tr>
-
                     <!-- Row: Condotta -->
                     <tr class="transition duration-150">
                         <td class="p-4 font-semibold text-purple-700 bg-purple-50/50 border-r border-gray-200 sticky left-0 z-10">Condotta</td>
@@ -265,7 +255,6 @@
                         </td>
                         <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
                     </tr>
-
                 </tbody>
             </table>
         </div>
@@ -283,11 +272,12 @@
         
     </div>
 
-    <!-- Modal per aggiungere/modificare Task -->
+    <!-- Modals -->
+    <!-- Task Modal -->
     <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
             <h2 id="modalTitle" class="text-xl font-bold mb-4">Aggiungi Nuovo Task</h2>
-            <form id="taskForm" onsubmit="submitNewTask(event)">
+            <form id="taskForm" onsubmit="window.submitNewTask(event)">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome Task</label>
                     <input type="text" id="newTaskName" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -307,9 +297,9 @@
                     </select>
                 </div>
                 <div class="flex justify-between items-center mt-6">
-                    <button type="button" id="modalDeleteBtn" onclick="deleteTaskFromModal()" class="px-4 py-2 bg-red-100 text-red-600 font-medium rounded-lg hover:bg-red-200 hidden transition">Elimina</button>
+                    <button type="button" id="modalDeleteBtn" onclick="window.deleteTaskFromModal()" class="px-4 py-2 bg-red-100 text-red-600 font-medium rounded-lg hover:bg-red-200 hidden transition">Elimina</button>
                     <div class="flex justify-end gap-2 ml-auto">
-                        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                        <button type="button" onclick="window.closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
                         <button type="submit" id="modalSubmitBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Aggiungi</button>
                     </div>
                 </div>
@@ -317,11 +307,11 @@
         </div>
     </div>
 
-    <!-- Modal per aggiungere/modificare COLONNA -->
+    <!-- Col Modal -->
     <div id="addColModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
             <h2 id="colModalTitle" class="text-xl font-bold mb-4">Aggiungi Nuova Colonna</h2>
-            <form id="colForm" onsubmit="submitNewCol(event)">
+            <form id="colForm" onsubmit="window.submitNewCol(event)">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome Colonna</label>
                     <input type="text" id="newColName" required placeholder="Es. RS 16" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -332,23 +322,21 @@
                 </div>
                 <div class="mb-6" id="colPositionContainer">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Inserisci in posizione</label>
-                    <select id="newColPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <!-- Popolato dinamicamente -->
-                    </select>
+                    <select id="newColPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                 </div>
                 <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeColModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                    <button type="button" onclick="window.closeColModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
                     <button type="submit" id="colModalSubmitBtn" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">Aggiungi</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal per aggiungere RIGA -->
+    <!-- Row Modal -->
     <div id="addRowModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
             <h2 class="text-xl font-bold mb-4">Aggiungi Nuova Riga</h2>
-            <form id="rowForm" onsubmit="submitNewRow(event)">
+            <form id="rowForm" onsubmit="window.submitNewRow(event)">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome Categoria</label>
                     <input type="text" id="newRowName" required placeholder="Es. Sport" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -367,69 +355,260 @@
                 </div>
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Inserisci in posizione</label>
-                    <select id="newRowPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <!-- Popolato dinamicamente -->
-                    </select>
+                    <select id="newRowPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                 </div>
                 <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeRowModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                    <button type="button" onclick="window.closeRowModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
                     <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">Aggiungi Riga</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Script per la logica Interattiva -->
-    <script>
-        let taskCounter = 100; 
-        let editingTaskId = null; 
-        let editingColIndex = null;
+    <!-- Script Integrato: Interfaccia + Database Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Inizializzazione Drag & Drop ---
-        function initDragAndDrop() {
+        // Variabili Globali UI
+        window.taskCounter = 100; 
+        window.editingTaskId = null; 
+        window.editingColIndex = null;
+
+        // Variabili Globali Database
+        let db, auth;
+        let isCloudEnabled = false;
+        let isUpdatingFromCloud = false; // Evita loop continui quando si scaricano dati
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'planner-rs-app';
+
+        // --- INIZIALIZZAZIONE CLOUD (FIREBASE) ---
+        try {
+            let firebaseConfig;
+            
+            // 1. Controllo se siamo nell'ambiente Canvas AI (funzionerà automaticamente)
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } 
+            // 2. PER GITHUB PAGES: Dovrai incollare la tua configurazione qui!
+            else {
+                /* SCOMMENTA E COMPILA QUESTO BLOCCO QUANDO METTI IL SITO SU GITHUB */
+                /*
+                firebaseConfig = {
+                    apiKey: "INSERISCI_LA_TUA_API_KEY",
+                    authDomain: "INSERISCI_IL_TUO_PROJECT_ID.firebaseapp.com",
+                    projectId: "INSERISCI_IL_TUO_PROJECT_ID",
+                    storageBucket: "INSERISCI_IL_TUO_PROJECT_ID.appspot.com",
+                    messagingSenderId: "INSERISCI_SENDER_ID",
+                    appId: "INSERISCI_APP_ID"
+                };
+                */
+                console.warn("Nessun Firebase configurato. Avvio in modalità Offline (JSON export disponibile).");
+            }
+
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isCloudEnabled = true;
+
+                updateCloudUI('connecting');
+
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                
+                initAuth().catch(e => {
+                    console.error("Errore di autenticazione", e);
+                    updateCloudUI('offline');
+                });
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        setupCloudListener();
+                    } else {
+                        updateCloudUI('offline');
+                    }
+                });
+            } else {
+                updateCloudUI('offline');
+            }
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+            updateCloudUI('offline');
+        }
+
+        // Funzione per aggiornare il pallino di stato in alto
+        function updateCloudUI(status) {
+            const dot = document.getElementById('cloud-dot');
+            const ping = document.getElementById('cloud-ping');
+            const text = document.getElementById('cloud-text');
+            
+            if(status === 'offline') {
+                dot.className = "relative inline-flex rounded-full h-3 w-3 bg-gray-400";
+                ping.classList.add('hidden');
+                text.innerText = "Offline";
+                text.className = "text-xs font-semibold text-gray-500";
+            } else if(status === 'connecting') {
+                dot.className = "relative inline-flex rounded-full h-3 w-3 bg-yellow-400";
+                ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75";
+                ping.classList.remove('hidden');
+                text.innerText = "Connessione...";
+                text.className = "text-xs font-semibold text-yellow-600";
+            } else if(status === 'synced') {
+                dot.className = "relative inline-flex rounded-full h-3 w-3 bg-green-500";
+                ping.classList.add('hidden');
+                text.innerText = "Cloud Attivo";
+                text.className = "text-xs font-semibold text-green-600";
+            } else if(status === 'saving') {
+                dot.className = "relative inline-flex rounded-full h-3 w-3 bg-blue-500";
+                ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75";
+                ping.classList.remove('hidden');
+                text.innerText = "Salvataggio...";
+                text.className = "text-xs font-semibold text-blue-600";
+            }
+        }
+
+        // --- SINCRONIZZAZIONE (Lettura/Scrittura) ---
+        function setupCloudListener() {
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state');
+            onSnapshot(docRef, (docSnap) => {
+                updateCloudUI('synced');
+                if (docSnap.exists()) {
+                    isUpdatingFromCloud = true;
+                    rebuildTableFromData(docSnap.data());
+                    // Breve pausa prima di sbloccare i salvataggi locali per evitare loop
+                    setTimeout(() => { isUpdatingFromCloud = false; }, 500);
+                }
+            }, (error) => {
+                console.error("Errore ascolto cloud:", error);
+                updateCloudUI('offline');
+            });
+        }
+
+        window.saveToCloud = async function() {
+            // Se offline, non loggato, o stiamo ricevendo dati dal cloud, ignora
+            if (!isCloudEnabled || !db || !auth.currentUser || isUpdatingFromCloud) return;
+
+            updateCloudUI('saving');
+            const data = window.getPlannerData(); // Raccoglie tutti i dati in un formato pulito
+            
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state');
+                await setDoc(docRef, data);
+                setTimeout(() => updateCloudUI('synced'), 500); // Ritorna verde
+            } catch (e) {
+                console.error("Errore durante il salvataggio in cloud:", e);
+                updateCloudUI('offline');
+            }
+        };
+
+        // --- Logica Estrazione Dati (usata per Cloud e per Export JSON) ---
+        window.getPlannerData = function() {
+            const data = { columns: [], rows: [], tasks: [] };
+
+            const ths = document.querySelectorAll('#mainTable thead th');
+            for (let i = 1; i < ths.length; i++) {
+                data.columns.push({
+                    name: ths[i].querySelector('.col-name').innerText,
+                    sub: ths[i].querySelector('.col-sub').innerText
+                });
+            }
+
+            const trs = document.querySelectorAll('#mainTable tbody tr');
+            trs.forEach((tr, rowIndex) => {
+                const tdCat = tr.querySelector('td:first-child');
+                let rowColor = 'gray';
+                const match = tdCat.className.match(/bg-([a-z]+)-50/);
+                if (match) rowColor = match[1];
+
+                data.rows.push({
+                    name: tdCat.innerText,
+                    color: rowColor
+                });
+
+                const tds = tr.querySelectorAll('td');
+                for (let colIndex = 1; colIndex < tds.length; colIndex++) {
+                    const dropZone = tds[colIndex].querySelector('.drop-zone');
+                    if (dropZone) {
+                        const tasks = dropZone.querySelectorAll('.draggable');
+                        tasks.forEach(task => {
+                            data.tasks.push({
+                                id: task.id,
+                                name: task.querySelector('.task-title').innerText,
+                                sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
+                                color: task.getAttribute('data-color'),
+                                location: { type: 'grid', rowIndex: rowIndex, colIndex: colIndex - 1 }
+                            });
+                        });
+                    }
+                }
+            });
+
+            const backlogTasks = document.querySelectorAll('#backlog .draggable');
+            backlogTasks.forEach(task => {
+                data.tasks.push({
+                    id: task.id,
+                    name: task.querySelector('.task-title').innerText,
+                    sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
+                    color: task.getAttribute('data-color'),
+                    location: { type: 'backlog' }
+                });
+            });
+
+            return data;
+        };
+
+
+        // --- LOGICA INTERFACCIA E DRAG & DROP ---
+        window.initDragAndDrop = function() {
             const draggables = document.querySelectorAll('.draggable');
             const dropZones = document.querySelectorAll('.drop-zone');
 
             draggables.forEach(draggable => {
-                draggable.removeEventListener('dragstart', dragStart);
-                draggable.removeEventListener('dragend', dragEnd);
-                draggable.addEventListener('dragstart', dragStart);
-                draggable.addEventListener('dragend', dragEnd);
+                draggable.removeEventListener('dragstart', window.dragStart);
+                draggable.removeEventListener('dragend', window.dragEnd);
+                draggable.addEventListener('dragstart', window.dragStart);
+                draggable.addEventListener('dragend', window.dragEnd);
             });
 
             dropZones.forEach(zone => {
-                zone.removeEventListener('dragover', dragOver);
-                zone.removeEventListener('dragleave', dragLeave);
-                zone.removeEventListener('drop', drop);
-                zone.addEventListener('dragover', dragOver);
-                zone.addEventListener('dragleave', dragLeave);
-                zone.addEventListener('drop', drop);
+                zone.removeEventListener('dragover', window.dragOver);
+                zone.removeEventListener('dragleave', window.dragLeave);
+                zone.removeEventListener('drop', window.drop);
+                zone.addEventListener('dragover', window.dragOver);
+                zone.addEventListener('dragleave', window.dragLeave);
+                zone.addEventListener('drop', window.drop);
             });
         }
 
-        function dragStart(e) {
+        window.dragStart = function(e) {
             e.dataTransfer.setData('text/plain', e.target.id);
             setTimeout(() => e.target.classList.add('opacity-40'), 0);
         }
 
-        function dragEnd(e) {
+        window.dragEnd = function(e) {
             e.target.classList.remove('opacity-40');
             document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
-            checkBacklogEmpty();
+            window.checkBacklogEmpty();
         }
 
-        function dragOver(e) {
+        window.dragOver = function(e) {
             e.preventDefault(); 
             const zone = e.target.closest('.drop-zone');
             if (zone) zone.classList.add('drag-over');
         }
 
-        function dragLeave(e) {
+        window.dragLeave = function(e) {
             const zone = e.target.closest('.drop-zone');
             if (zone) zone.classList.remove('drag-over');
         }
 
-        function drop(e) {
+        window.drop = function(e) {
             e.preventDefault();
             const zone = e.target.closest('.drop-zone');
             if (zone) {
@@ -438,20 +617,18 @@
                 const draggableElement = document.getElementById(id);
                 if (draggableElement) {
                     zone.appendChild(draggableElement);
+                    window.saveToCloud(); // <-- Salva su cloud dopo il drag&drop
                 }
             }
         }
 
-        // --- Logica Task ---
-        function editTask(id, event) {
+        // --- Funzioni Task ---
+        window.editTask = function(id, event) {
             if(event) { event.preventDefault(); event.stopPropagation(); }
-            
-            editingTaskId = id;
+            window.editingTaskId = id;
             const el = document.getElementById(id);
-            
             const titleEl = el.querySelector('.task-title');
             const subEl = el.querySelector('.task-subtext');
-            
             const name = titleEl ? titleEl.innerText : '';
             const sub = subEl ? subEl.innerText : '';
             const color = el.getAttribute('data-color') || 'gray';
@@ -463,12 +640,11 @@
             document.getElementById('modalTitle').innerText = 'Modifica Task';
             document.getElementById('modalSubmitBtn').innerText = 'Salva Modifiche';
             document.getElementById('modalDeleteBtn').classList.remove('hidden');
-            
             document.getElementById('addModal').classList.remove('hidden');
         }
 
-        function openModal() {
-            editingTaskId = null;
+        window.openModal = function() {
+            window.editingTaskId = null;
             document.getElementById('taskForm').reset();
             document.getElementById('modalTitle').innerText = 'Aggiungi Nuovo Task';
             document.getElementById('modalSubmitBtn').innerText = 'Aggiungi';
@@ -476,29 +652,30 @@
             document.getElementById('addModal').classList.remove('hidden');
         }
 
-        function closeModal() {
+        window.closeModal = function() {
             document.getElementById('addModal').classList.add('hidden');
-            editingTaskId = null;
+            window.editingTaskId = null;
         }
 
-        function deleteTaskFromModal() {
-            if (editingTaskId) {
-                document.getElementById(editingTaskId).remove();
-                checkBacklogEmpty();
-                closeModal();
+        window.deleteTaskFromModal = function() {
+            if (window.editingTaskId) {
+                document.getElementById(window.editingTaskId).remove();
+                window.checkBacklogEmpty();
+                window.closeModal();
+                window.saveToCloud(); // <-- Salva cancellazione
             }
         }
 
-        function getTaskHTML(id, name, sub, color) {
+        window.getTaskHTML = function(id, name, sub, color) {
             let subHtml = sub ? `<span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">${sub}</span>` : '';
             return `
                 ${subHtml}
                 <span class="task-title font-semibold block text-center">${name}</span>
-                <button type="button" onclick="editTask('${id}', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                <button type="button" onclick="window.editTask('${id}', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
             `;
         }
 
-        function submitNewTask(e) {
+        window.submitNewTask = function(e) {
             e.preventDefault();
             const name = document.getElementById('newTaskName').value;
             const sub = document.getElementById('newTaskSub').value;
@@ -508,37 +685,36 @@
             let borderLeftClass = `border-l-4 border-l-${color}-500`;
             if(color === 'gray') { borderClass = 'border-gray-300'; borderLeftClass = 'border-l-4 border-l-gray-500'; }
             
-            if (editingTaskId) {
-                const taskDiv = document.getElementById(editingTaskId);
+            if (window.editingTaskId) {
+                const taskDiv = document.getElementById(window.editingTaskId);
                 const colors = ['blue', 'green', 'orange', 'purple', 'gray', 'red', 'yellow'];
-                colors.forEach(c => {
-                    taskDiv.classList.remove(`border-${c}-200`, `border-${c}-300`, `border-l-4`, `border-l-${c}-500`);
-                });
+                colors.forEach(c => taskDiv.classList.remove(`border-${c}-200`, `border-${c}-300`, `border-l-4`, `border-l-${c}-500`));
                 
                 taskDiv.classList.add(`border-${color === 'gray' ? 'gray-300' : color + '-200'}`, 'border-l-4', `border-l-${color === 'gray' ? 'gray-500' : color + '-500'}`);
                 taskDiv.setAttribute('data-color', color);
-                taskDiv.innerHTML = getTaskHTML(editingTaskId, name, sub, color);
+                taskDiv.innerHTML = window.getTaskHTML(window.editingTaskId, name, sub, color);
             } else {
-                taskCounter++;
-                const newId = 'task-' + taskCounter;
+                window.taskCounter++;
+                const newId = 'task-' + window.taskCounter;
                 const taskDiv = document.createElement('div');
                 taskDiv.id = newId;
                 taskDiv.draggable = true;
                 taskDiv.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm ${borderLeftClass} relative group min-w-[150px]`;
                 taskDiv.setAttribute('data-color', color);
-                taskDiv.innerHTML = getTaskHTML(newId, name, sub, color);
+                taskDiv.innerHTML = window.getTaskHTML(newId, name, sub, color);
 
-                taskDiv.addEventListener('dragstart', dragStart);
-                taskDiv.addEventListener('dragend', dragEnd);
+                taskDiv.addEventListener('dragstart', window.dragStart);
+                taskDiv.addEventListener('dragend', window.dragEnd);
 
                 document.getElementById('backlog').appendChild(taskDiv);
-                checkBacklogEmpty();
+                window.checkBacklogEmpty();
             }
-            closeModal();
+            window.closeModal();
+            window.saveToCloud(); // <-- Salva nuovo/modifica task
         }
 
-        // --- Logica Colonne ---
-        function populateColPositionDropdown() {
+        // --- Funzioni Colonne ---
+        window.populateColPositionDropdown = function() {
             const select = document.getElementById('newColPosition');
             select.innerHTML = '<option value="end">Alla fine</option>';
             const ths = document.querySelectorAll('thead th');
@@ -548,54 +724,50 @@
             }
         }
 
-        function openColModal() {
-            editingColIndex = null;
+        window.openColModal = function() {
+            window.editingColIndex = null;
             document.getElementById('colForm').reset();
             document.getElementById('colModalTitle').innerText = 'Aggiungi Nuova Colonna';
             document.getElementById('colModalSubmitBtn').innerText = 'Aggiungi Colonna';
             document.getElementById('colPositionContainer').classList.remove('hidden');
-            populateColPositionDropdown();
+            window.populateColPositionDropdown();
             document.getElementById('addColModal').classList.remove('hidden');
         }
 
-        function openEditColModal(btn) {
+        window.openEditColModal = function(btn) {
             const th = btn.closest('th');
-            editingColIndex = th.cellIndex;
-            
+            window.editingColIndex = th.cellIndex;
             const name = th.querySelector('.col-name') ? th.querySelector('.col-name').innerText : '';
             const sub = th.querySelector('.col-sub') ? th.querySelector('.col-sub').innerText : '';
 
             document.getElementById('newColName').value = name;
             document.getElementById('newColSub').value = sub;
-            
             document.getElementById('colModalTitle').innerText = 'Modifica Colonna';
             document.getElementById('colModalSubmitBtn').innerText = 'Salva Modifiche';
             document.getElementById('colPositionContainer').classList.add('hidden');
-            
             document.getElementById('addColModal').classList.remove('hidden');
         }
 
-        function closeColModal() { document.getElementById('addColModal').classList.add('hidden'); }
+        window.closeColModal = function() { document.getElementById('addColModal').classList.add('hidden'); }
 
-        function getColControlsHTML() {
+        window.getColControlsHTML = function() {
             return `
             <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
-                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
-                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+                <button onclick="window.moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                <button onclick="window.openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                <button onclick="window.moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
             </div>`;
         }
 
-        function submitNewCol(e) {
+        window.submitNewCol = function(e) {
             e.preventDefault();
             const name = document.getElementById('newColName').value;
             const sub = document.getElementById('newColSub').value;
-
             const theadTr = document.querySelector('thead tr');
             const tbodyTrs = document.querySelectorAll('tbody tr');
 
-            if (editingColIndex !== null) {
-                const th = theadTr.children[editingColIndex];
+            if (window.editingColIndex !== null) {
+                const th = theadTr.children[window.editingColIndex];
                 if(th.querySelector('.col-name')) th.querySelector('.col-name').innerText = name;
                 if(th.querySelector('.col-sub')) th.querySelector('.col-sub').innerText = sub;
             } else {
@@ -607,7 +779,7 @@
                         <span class="col-name text-gray-700">${name}</span>
                         <span class="col-sub text-xs font-normal text-gray-500 mt-1">${sub}</span>
                     </div>
-                    ${getColControlsHTML()}
+                    ${window.getColControlsHTML()}
                 `;
 
                 const newTds = Array.from(tbodyTrs).map(() => {
@@ -625,12 +797,13 @@
                     theadTr.insertBefore(th, theadTr.children[idx]);
                     tbodyTrs.forEach((tr, i) => tr.insertBefore(newTds[i], tr.children[idx]));
                 }
-                initDragAndDrop(); 
+                window.initDragAndDrop(); 
             }
-            closeColModal();
+            window.closeColModal();
+            window.saveToCloud(); // <-- Salva colonna
         }
 
-        function moveCol(btn, dir) {
+        window.moveCol = function(btn, dir) {
             const th = btn.closest('th');
             const table = document.getElementById('mainTable');
             const currentIndex = th.cellIndex;
@@ -654,10 +827,11 @@
                     tr.insertBefore(td, tr.children[targetIndex]);
                 }
             });
+            window.saveToCloud(); // <-- Salva movimento colonna
         }
 
-        // --- Logica Righe ---
-        function openRowModal() {
+        // --- Funzioni Righe ---
+        window.openRowModal = function() {
             document.getElementById('rowForm').reset();
             const select = document.getElementById('newRowPosition');
             select.innerHTML = '<option value="end">Alla fine</option>';
@@ -668,9 +842,9 @@
             });
             document.getElementById('addRowModal').classList.remove('hidden');
         }
-        function closeRowModal() { document.getElementById('addRowModal').classList.add('hidden'); }
+        window.closeRowModal = function() { document.getElementById('addRowModal').classList.add('hidden'); }
 
-        function submitNewRow(e) {
+        window.submitNewRow = function(e) {
             e.preventDefault();
             const name = document.getElementById('newRowName').value;
             const color = document.getElementById('newRowCategory').value;
@@ -699,69 +873,14 @@
                 tbody.insertBefore(tr, tbody.children[parseInt(pos)]);
             }
 
-            initDragAndDrop();
-            closeRowModal();
+            window.initDragAndDrop();
+            window.closeRowModal();
+            window.saveToCloud(); // <-- Salva riga
         }
 
-        // --- Logica IMPORT / EXPORT in JSON ---
-        
-        function exportData() {
-            const data = { columns: [], rows: [], tasks: [] };
-
-            // 1. Leggi Colonne
-            const ths = document.querySelectorAll('#mainTable thead th');
-            for (let i = 1; i < ths.length; i++) { // Salta colonna 0 (Categoria)
-                data.columns.push({
-                    name: ths[i].querySelector('.col-name').innerText,
-                    sub: ths[i].querySelector('.col-sub').innerText
-                });
-            }
-
-            // 2. Leggi Righe e Task
-            const trs = document.querySelectorAll('#mainTable tbody tr');
-            trs.forEach((tr, rowIndex) => {
-                const tdCat = tr.querySelector('td:first-child');
-                // Estrae il colore base dalla classe (es: bg-blue-50/50 -> blue)
-                let rowColor = 'gray';
-                const match = tdCat.className.match(/bg-([a-z]+)-50/);
-                if (match) rowColor = match[1];
-
-                data.rows.push({
-                    name: tdCat.innerText,
-                    color: rowColor
-                });
-
-                const tds = tr.querySelectorAll('td');
-                for (let colIndex = 1; colIndex < tds.length; colIndex++) {
-                    const dropZone = tds[colIndex].querySelector('.drop-zone');
-                    if (dropZone) {
-                        const tasks = dropZone.querySelectorAll('.draggable');
-                        tasks.forEach(task => {
-                            data.tasks.push({
-                                id: task.id,
-                                name: task.querySelector('.task-title').innerText,
-                                sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
-                                color: task.getAttribute('data-color'),
-                                location: { type: 'grid', rowIndex: rowIndex, colIndex: colIndex - 1 }
-                            });
-                        });
-                    }
-                }
-            });
-
-            // 3. Leggi Backlog Task
-            const backlogTasks = document.querySelectorAll('#backlog .draggable');
-            backlogTasks.forEach(task => {
-                data.tasks.push({
-                    id: task.id,
-                    name: task.querySelector('.task-title').innerText,
-                    sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
-                    color: task.getAttribute('data-color'),
-                    location: { type: 'backlog' }
-                });
-            });
-
-            // Genera il file e forza il download
+        // --- EXPORT / IMPORT JSON MANUALE ---
+        window.exportData = function() {
+            const data = window.getPlannerData();
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
@@ -771,7 +890,7 @@
             downloadAnchorNode.remove();
         }
 
-        function importData(event) {
+        window.importData = function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -780,17 +899,18 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     rebuildTableFromData(data);
-                    document.getElementById('importFile').value = ''; // Reset file input
+                    document.getElementById('importFile').value = ''; 
+                    window.saveToCloud(); // <-- Invia al cloud il file importato!
                 } catch (error) {
-                    alert("Si è verificato un errore durante la lettura del file JSON. Assicurati che sia il file corretto.");
+                    alert("Si è verificato un errore durante la lettura del file JSON.");
                     console.error(error);
                 }
             };
             reader.readAsText(file);
         }
 
+        // --- Funzione condivisa per rigenerare la UI dai dati (Cloud o JSON) ---
         function rebuildTableFromData(data) {
-            // 1. Ricostruisci Header (Colonne)
             const theadTr = document.querySelector('#mainTable thead tr');
             theadTr.innerHTML = '<th class="p-4 font-semibold w-1/6 border-r border-gray-200 bg-gray-100 sticky left-0 z-20">Categoria</th>';
             
@@ -802,12 +922,11 @@
                         <span class="col-name text-gray-700">${col.name}</span>
                         <span class="col-sub text-xs font-normal text-gray-500 mt-1">${col.sub}</span>
                     </div>
-                    ${getColControlsHTML()}
+                    ${window.getColControlsHTML()}
                 `;
                 theadTr.appendChild(th);
             });
 
-            // 2. Ricostruisci Body (Righe)
             const tbody = document.querySelector('#mainTable tbody');
             tbody.innerHTML = ''; 
             data.rows.forEach(row => {
@@ -828,18 +947,15 @@
                 tbody.appendChild(tr);
             });
 
-            // Pulisci il backlog attuale
             const backlog = document.getElementById('backlog');
             backlog.querySelectorAll('.draggable').forEach(el => el.remove());
 
-            // 3. Riposiziona i Task
-            taskCounter = 100; // Reset counter base
+            window.taskCounter = 100; 
 
             data.tasks.forEach(t => {
-                // Aggiorna il counter se l'id del task importato è più alto
                 const idNum = parseInt(t.id.replace('task-', ''));
-                if (!isNaN(idNum) && idNum >= taskCounter) {
-                    taskCounter = idNum;
+                if (!isNaN(idNum) && idNum >= window.taskCounter) {
+                    window.taskCounter = idNum;
                 }
 
                 const borderClass = `border-${t.color === 'gray' ? 'gray-300' : t.color + '-200'}`;
@@ -850,14 +966,14 @@
                 taskDiv.draggable = true;
                 taskDiv.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm ${borderLeftClass} relative group min-w-[150px]`;
                 taskDiv.setAttribute('data-color', t.color);
-                taskDiv.innerHTML = getTaskHTML(t.id, t.name, t.sub, t.color);
+                taskDiv.innerHTML = window.getTaskHTML(t.id, t.name, t.sub, t.color);
 
                 if (t.location.type === 'backlog') {
                     backlog.appendChild(taskDiv);
                 } else if (t.location.type === 'grid') {
                     const targetTr = tbody.children[t.location.rowIndex];
                     if (targetTr) {
-                        const targetTd = targetTr.children[t.location.colIndex + 1]; // +1 per skippare la colonna Categoria
+                        const targetTd = targetTr.children[t.location.colIndex + 1]; 
                         if (targetTd) {
                             const dropZone = targetTd.querySelector('.drop-zone');
                             if (dropZone) dropZone.appendChild(taskDiv);
@@ -866,12 +982,11 @@
                 }
             });
 
-            initDragAndDrop();
-            checkBacklogEmpty();
+            window.initDragAndDrop();
+            window.checkBacklogEmpty();
         }
 
-        // --- Utility ---
-        function checkBacklogEmpty() {
+        window.checkBacklogEmpty = function() {
             const backlog = document.getElementById('backlog');
             const text = document.getElementById('backlog-empty-text');
             const hasDraggables = backlog.querySelectorAll('.draggable').length > 0;
@@ -882,9 +997,10 @@
             }
         }
 
+        // Init pagina
         document.addEventListener('DOMContentLoaded', () => {
-            initDragAndDrop();
-            checkBacklogEmpty();
+            window.initDragAndDrop();
+            window.checkBacklogEmpty();
         });
 
     </script>
