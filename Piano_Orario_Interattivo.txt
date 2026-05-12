@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Orario RS4 - RS15 (Interattivo Avanzato)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .table-container {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .draggable {
+            cursor: grab;
+        }
+        .draggable:active {
+            cursor: grabbing;
+        }
+        .drop-zone {
+            min-height: 80px;
+            transition: background-color 0.2s ease;
+        }
+        .drag-over {
+            background-color: #e5e7eb; /* gray-200 */
+            border: 2px dashed #9ca3af;
+            border-radius: 0.5rem;
+        }
+        /* Nasconde la scrollbar esteticamente ma permette lo scroll */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12 text-gray-800">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Visione d'Insieme: Piano Orario RS</h1>
+                <p class="text-gray-600">Trascina gli elementi, sposta le colonne e salva il tuo lavoro su file.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                
+                <!-- Azioni di Salvataggio -->
+                <div class="flex items-center gap-1 mr-2 pr-2 border-r border-gray-300">
+                    <button onclick="exportData()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Scarica un file JSON con il tuo lavoro">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Esporta
+                    </button>
+                    <button onclick="document.getElementById('importFile').click()" class="text-gray-600 hover:text-blue-600 font-semibold py-2 px-3 rounded-lg hover:bg-gray-200 transition duration-150 whitespace-nowrap flex items-center gap-1" title="Carica un file JSON precedentemente salvato">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        Importa
+                    </button>
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                </div>
+
+                <button onclick="openColModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg shadow transition duration-150 whitespace-nowrap">
+                    + Colonna
+                </button>
+                <button onclick="openRowModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg shadow transition duration-150 whitespace-nowrap">
+                    + Riga
+                </button>
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-150 flex items-center gap-2 whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Nuovo Task
+                </button>
+            </div>
+        </div>
+
+        <!-- Matrix / Table -->
+        <div class="bg-white rounded-xl table-container border border-gray-200 overflow-x-auto mb-8">
+            <table id="mainTable" class="w-full text-left border-collapse min-w-[800px]">
+                <!-- Table Header -->
+                <thead>
+                    <tr class="bg-gray-50 text-gray-700 text-sm uppercase tracking-wider border-b border-gray-200">
+                        <th class="p-4 font-semibold w-1/6 border-r border-gray-200 bg-gray-100 sticky left-0 z-20">Categoria</th>
+                        
+                        <!-- Colonna -->
+                        <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="col-name text-gray-700">RS 4</span>
+                                <span class="col-sub text-xs font-normal text-gray-500 mt-1"></span>
+                            </div>
+                            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1" title="Sposta a sinistra">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1" title="Modifica Colonna"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1" title="Sposta a destra">&gt;</button>
+                            </div>
+                        </th>
+
+                        <!-- Colonna -->
+                        <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="col-name text-gray-700">RS 8</span>
+                                <span class="col-sub text-xs font-normal text-gray-500 mt-1"></span>
+                            </div>
+                            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+                            </div>
+                        </th>
+
+                        <!-- Colonna -->
+                        <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="col-name text-gray-700">RS 13</span>
+                                <span class="col-sub text-xs font-normal text-gray-500 mt-1"></span>
+                            </div>
+                            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+                            </div>
+                        </th>
+
+                        <!-- Colonna -->
+                        <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[180px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="col-name text-gray-700">RS 14</span>
+                                <span class="col-sub text-xs font-normal text-gray-500 mt-1">Lunedì - Venerdì</span>
+                            </div>
+                            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+                            </div>
+                        </th>
+
+                        <!-- Colonna -->
+                        <th class="p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[180px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="col-name text-gray-700">RS 15</span>
+                                <span class="col-sub text-xs font-normal text-gray-500 mt-1">Martedì - Venerdì</span>
+                            </div>
+                            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                
+                <!-- Table Body -->
+                <tbody class="text-gray-800 text-sm">
+                    
+                    <!-- Row: Personale -->
+                    <tr class="border-b border-gray-200 transition duration-150">
+                        <td class="p-4 font-semibold text-blue-700 bg-blue-50/50 border-r border-gray-200 sticky left-0 z-10">Personale</td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-1" draggable="true" class="draggable bg-white border border-blue-200 p-3 rounded shadow-sm border-l-4 border-l-blue-500 relative group min-w-[150px]" data-color="blue">
+                                    <span class="task-title font-semibold block text-center">R I P ?!</span>
+                                    <button type="button" onclick="editTask('task-1', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                    </tr>
+
+                    <!-- Row: Istruzione -->
+                    <tr class="border-b border-gray-200 transition duration-150">
+                        <td class="p-4 font-semibold text-green-700 bg-green-50/50 border-r border-gray-200 sticky left-0 z-10">Istruzione</td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-2" draggable="true" class="draggable bg-white border border-green-200 p-3 rounded shadow-sm border-l-4 border-l-green-500 relative group min-w-[150px]" data-color="green">
+                                    <span class="task-title font-semibold block text-center">Test OMAN</span>
+                                    <button type="button" onclick="editTask('task-2', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-3" draggable="true" class="draggable bg-white border border-green-200 p-3 rounded shadow-sm border-l-4 border-l-green-500 relative group min-w-[150px]" data-color="green">
+                                    <span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">Lunedì</span>
+                                    <span class="task-title font-semibold block text-center">Manipolazioni + Blocco A</span>
+                                    <button type="button" onclick="editTask('task-3', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                                <div id="task-4" draggable="true" class="draggable bg-white border border-green-200 p-3 rounded shadow-sm border-l-4 border-l-green-500 relative group min-w-[150px]" data-color="green">
+                                    <span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">Venerdì</span>
+                                    <span class="task-title font-semibold block text-center">Modulo B</span>
+                                    <button type="button" onclick="editTask('task-4', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-5" draggable="true" class="draggable bg-white border border-green-200 p-3 rounded shadow-sm border-l-4 border-l-green-500 relative group min-w-[150px]" data-color="green">
+                                    <span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">Martedì</span>
+                                    <span class="task-title font-semibold block text-center">Modulo + Tiro</span>
+                                    <button type="button" onclick="editTask('task-5', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                                <div id="task-6" draggable="true" class="draggable bg-white border border-green-200 p-3 rounded shadow-sm border-l-4 border-l-green-500 relative group min-w-[150px]" data-color="green">
+                                    <span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">Venerdì</span>
+                                    <span class="task-title font-semibold block text-center">300 m</span>
+                                    <button type="button" onclick="editTask('task-6', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Row: Logistica -->
+                    <tr class="border-b border-gray-200 transition duration-150">
+                        <td class="p-4 font-semibold text-orange-700 bg-orange-50/50 border-r border-gray-200 sticky left-0 z-10">Logistica</td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-7" draggable="true" class="draggable bg-white border border-orange-200 p-3 rounded shadow-sm border-l-4 border-l-orange-500 relative group min-w-[150px]" data-color="orange">
+                                    <span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">In prestito</span>
+                                    <span class="task-title font-semibold block text-center">Presa armi</span>
+                                    <button type="button" onclick="editTask('task-7', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-8" draggable="true" class="draggable bg-white border border-orange-200 p-3 rounded shadow-sm border-l-4 border-l-orange-500 relative group min-w-[150px]" data-color="orange">
+                                    <span class="task-title font-semibold block text-center">Waffen einschiessen</span>
+                                    <button type="button" onclick="editTask('task-8', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                    </tr>
+
+                    <!-- Row: Condotta -->
+                    <tr class="transition duration-150">
+                        <td class="p-4 font-semibold text-purple-700 bg-purple-50/50 border-r border-gray-200 sticky left-0 z-10">Condotta</td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-9" draggable="true" class="draggable bg-white border border-purple-200 p-3 rounded shadow-sm border-l-4 border-l-purple-500 relative group min-w-[150px]" data-color="purple">
+                                    <span class="task-title font-semibold block text-center">Comandare</span>
+                                    <button type="button" onclick="editTask('task-9', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2">
+                            <div class="drop-zone flex flex-col gap-2 h-full">
+                                <div id="task-10" draggable="true" class="draggable bg-white border border-purple-200 p-3 rounded shadow-sm border-l-4 border-l-purple-500 relative group min-w-[150px]" data-color="purple">
+                                    <span class="task-title font-semibold block text-center">ADA einstellen</span>
+                                    <button type="button" onclick="editTask('task-10', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-r border-gray-200 align-top p-2"><div class="drop-zone flex flex-col gap-2 h-full"></div></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Backlog / Nuovi Elementi -->
+        <div class="bg-gray-100 p-4 border border-gray-300 rounded-xl mb-8">
+            <h2 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                Bacheca Nuovi Elementi (Trascina da qui alla tabella)
+            </h2>
+            <div id="backlog" class="drop-zone flex gap-4 min-h-[80px] overflow-x-auto pb-2">
+                <div class="text-sm text-gray-400 italic mt-6 ml-2 absolute pointer-events-none" id="backlog-empty-text">Nessun elemento in bacheca.</div>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Modal per aggiungere/modificare Task -->
+    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <h2 id="modalTitle" class="text-xl font-bold mb-4">Aggiungi Nuovo Task</h2>
+            <form id="taskForm" onsubmit="submitNewTask(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome Task</label>
+                    <input type="text" id="newTaskName" required class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sotto-testo (opzionale)</label>
+                    <input type="text" id="newTaskSub" placeholder="Es. Lunedì, Note extra..." class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categoria (Colore)</label>
+                    <select id="newTaskCategory" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="blue">Personale (Blu)</option>
+                        <option value="green">Istruzione (Verde)</option>
+                        <option value="orange">Logistica (Arancione)</option>
+                        <option value="purple">Condotta (Viola)</option>
+                        <option value="gray">Generico (Grigio)</option>
+                    </select>
+                </div>
+                <div class="flex justify-between items-center mt-6">
+                    <button type="button" id="modalDeleteBtn" onclick="deleteTaskFromModal()" class="px-4 py-2 bg-red-100 text-red-600 font-medium rounded-lg hover:bg-red-200 hidden transition">Elimina</button>
+                    <div class="flex justify-end gap-2 ml-auto">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                        <button type="submit" id="modalSubmitBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Aggiungi</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal per aggiungere/modificare COLONNA -->
+    <div id="addColModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <h2 id="colModalTitle" class="text-xl font-bold mb-4">Aggiungi Nuova Colonna</h2>
+            <form id="colForm" onsubmit="submitNewCol(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome Colonna</label>
+                    <input type="text" id="newColName" required placeholder="Es. RS 16" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sottotitolo (opzionale)</label>
+                    <input type="text" id="newColSub" placeholder="Es. Lunedì - Mercoledì" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-6" id="colPositionContainer">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Inserisci in posizione</label>
+                    <select id="newColPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <!-- Popolato dinamicamente -->
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeColModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                    <button type="submit" id="colModalSubmitBtn" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal per aggiungere RIGA -->
+    <div id="addRowModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-xl font-bold mb-4">Aggiungi Nuova Riga</h2>
+            <form id="rowForm" onsubmit="submitNewRow(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome Categoria</label>
+                    <input type="text" id="newRowName" required placeholder="Es. Sport" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Colore Categoria</label>
+                    <select id="newRowCategory" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="blue">Blu</option>
+                        <option value="green">Verde</option>
+                        <option value="orange">Arancione</option>
+                        <option value="purple">Viola</option>
+                        <option value="red">Rosso</option>
+                        <option value="yellow">Giallo</option>
+                        <option value="gray">Grigio</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Inserisci in posizione</label>
+                    <select id="newRowPosition" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <!-- Popolato dinamicamente -->
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeRowModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annulla</button>
+                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">Aggiungi Riga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script per la logica Interattiva -->
+    <script>
+        let taskCounter = 100; 
+        let editingTaskId = null; 
+        let editingColIndex = null;
+
+        // --- Inizializzazione Drag & Drop ---
+        function initDragAndDrop() {
+            const draggables = document.querySelectorAll('.draggable');
+            const dropZones = document.querySelectorAll('.drop-zone');
+
+            draggables.forEach(draggable => {
+                draggable.removeEventListener('dragstart', dragStart);
+                draggable.removeEventListener('dragend', dragEnd);
+                draggable.addEventListener('dragstart', dragStart);
+                draggable.addEventListener('dragend', dragEnd);
+            });
+
+            dropZones.forEach(zone => {
+                zone.removeEventListener('dragover', dragOver);
+                zone.removeEventListener('dragleave', dragLeave);
+                zone.removeEventListener('drop', drop);
+                zone.addEventListener('dragover', dragOver);
+                zone.addEventListener('dragleave', dragLeave);
+                zone.addEventListener('drop', drop);
+            });
+        }
+
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.id);
+            setTimeout(() => e.target.classList.add('opacity-40'), 0);
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('opacity-40');
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+            checkBacklogEmpty();
+        }
+
+        function dragOver(e) {
+            e.preventDefault(); 
+            const zone = e.target.closest('.drop-zone');
+            if (zone) zone.classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            const zone = e.target.closest('.drop-zone');
+            if (zone) zone.classList.remove('drag-over');
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const zone = e.target.closest('.drop-zone');
+            if (zone) {
+                zone.classList.remove('drag-over');
+                const id = e.dataTransfer.getData('text/plain');
+                const draggableElement = document.getElementById(id);
+                if (draggableElement) {
+                    zone.appendChild(draggableElement);
+                }
+            }
+        }
+
+        // --- Logica Task ---
+        function editTask(id, event) {
+            if(event) { event.preventDefault(); event.stopPropagation(); }
+            
+            editingTaskId = id;
+            const el = document.getElementById(id);
+            
+            const titleEl = el.querySelector('.task-title');
+            const subEl = el.querySelector('.task-subtext');
+            
+            const name = titleEl ? titleEl.innerText : '';
+            const sub = subEl ? subEl.innerText : '';
+            const color = el.getAttribute('data-color') || 'gray';
+
+            document.getElementById('newTaskName').value = name;
+            document.getElementById('newTaskSub').value = sub;
+            document.getElementById('newTaskCategory').value = color;
+
+            document.getElementById('modalTitle').innerText = 'Modifica Task';
+            document.getElementById('modalSubmitBtn').innerText = 'Salva Modifiche';
+            document.getElementById('modalDeleteBtn').classList.remove('hidden');
+            
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function openModal() {
+            editingTaskId = null;
+            document.getElementById('taskForm').reset();
+            document.getElementById('modalTitle').innerText = 'Aggiungi Nuovo Task';
+            document.getElementById('modalSubmitBtn').innerText = 'Aggiungi';
+            document.getElementById('modalDeleteBtn').classList.add('hidden');
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('addModal').classList.add('hidden');
+            editingTaskId = null;
+        }
+
+        function deleteTaskFromModal() {
+            if (editingTaskId) {
+                document.getElementById(editingTaskId).remove();
+                checkBacklogEmpty();
+                closeModal();
+            }
+        }
+
+        function getTaskHTML(id, name, sub, color) {
+            let subHtml = sub ? `<span class="task-subtext inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium w-full text-center">${sub}</span>` : '';
+            return `
+                ${subHtml}
+                <span class="task-title font-semibold block text-center">${name}</span>
+                <button type="button" onclick="editTask('${id}', event)" class="absolute top-1 right-1 text-blue-500 opacity-0 group-hover:opacity-100 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+            `;
+        }
+
+        function submitNewTask(e) {
+            e.preventDefault();
+            const name = document.getElementById('newTaskName').value;
+            const sub = document.getElementById('newTaskSub').value;
+            const color = document.getElementById('newTaskCategory').value;
+            
+            let borderClass = `border-${color}-200`;
+            let borderLeftClass = `border-l-4 border-l-${color}-500`;
+            if(color === 'gray') { borderClass = 'border-gray-300'; borderLeftClass = 'border-l-4 border-l-gray-500'; }
+            
+            if (editingTaskId) {
+                const taskDiv = document.getElementById(editingTaskId);
+                const colors = ['blue', 'green', 'orange', 'purple', 'gray', 'red', 'yellow'];
+                colors.forEach(c => {
+                    taskDiv.classList.remove(`border-${c}-200`, `border-${c}-300`, `border-l-4`, `border-l-${c}-500`);
+                });
+                
+                taskDiv.classList.add(`border-${color === 'gray' ? 'gray-300' : color + '-200'}`, 'border-l-4', `border-l-${color === 'gray' ? 'gray-500' : color + '-500'}`);
+                taskDiv.setAttribute('data-color', color);
+                taskDiv.innerHTML = getTaskHTML(editingTaskId, name, sub, color);
+            } else {
+                taskCounter++;
+                const newId = 'task-' + taskCounter;
+                const taskDiv = document.createElement('div');
+                taskDiv.id = newId;
+                taskDiv.draggable = true;
+                taskDiv.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm ${borderLeftClass} relative group min-w-[150px]`;
+                taskDiv.setAttribute('data-color', color);
+                taskDiv.innerHTML = getTaskHTML(newId, name, sub, color);
+
+                taskDiv.addEventListener('dragstart', dragStart);
+                taskDiv.addEventListener('dragend', dragEnd);
+
+                document.getElementById('backlog').appendChild(taskDiv);
+                checkBacklogEmpty();
+            }
+            closeModal();
+        }
+
+        // --- Logica Colonne ---
+        function populateColPositionDropdown() {
+            const select = document.getElementById('newColPosition');
+            select.innerHTML = '<option value="end">Alla fine</option>';
+            const ths = document.querySelectorAll('thead th');
+            for(let i=1; i<ths.length; i++) {
+                const name = ths[i].querySelector('.col-name') ? ths[i].querySelector('.col-name').innerText : `Colonna ${i}`;
+                select.innerHTML += `<option value="${i}">Prima di: ${name}</option>`;
+            }
+        }
+
+        function openColModal() {
+            editingColIndex = null;
+            document.getElementById('colForm').reset();
+            document.getElementById('colModalTitle').innerText = 'Aggiungi Nuova Colonna';
+            document.getElementById('colModalSubmitBtn').innerText = 'Aggiungi Colonna';
+            document.getElementById('colPositionContainer').classList.remove('hidden');
+            populateColPositionDropdown();
+            document.getElementById('addColModal').classList.remove('hidden');
+        }
+
+        function openEditColModal(btn) {
+            const th = btn.closest('th');
+            editingColIndex = th.cellIndex;
+            
+            const name = th.querySelector('.col-name') ? th.querySelector('.col-name').innerText : '';
+            const sub = th.querySelector('.col-sub') ? th.querySelector('.col-sub').innerText : '';
+
+            document.getElementById('newColName').value = name;
+            document.getElementById('newColSub').value = sub;
+            
+            document.getElementById('colModalTitle').innerText = 'Modifica Colonna';
+            document.getElementById('colModalSubmitBtn').innerText = 'Salva Modifiche';
+            document.getElementById('colPositionContainer').classList.add('hidden');
+            
+            document.getElementById('addColModal').classList.remove('hidden');
+        }
+
+        function closeColModal() { document.getElementById('addColModal').classList.add('hidden'); }
+
+        function getColControlsHTML() {
+            return `
+            <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                <button onclick="moveCol(this, -1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&lt;</button>
+                <button onclick="openEditColModal(this)" class="text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                <button onclick="moveCol(this, 1)" class="text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded px-1">&gt;</button>
+            </div>`;
+        }
+
+        function submitNewCol(e) {
+            e.preventDefault();
+            const name = document.getElementById('newColName').value;
+            const sub = document.getElementById('newColSub').value;
+
+            const theadTr = document.querySelector('thead tr');
+            const tbodyTrs = document.querySelectorAll('tbody tr');
+
+            if (editingColIndex !== null) {
+                const th = theadTr.children[editingColIndex];
+                if(th.querySelector('.col-name')) th.querySelector('.col-name').innerText = name;
+                if(th.querySelector('.col-sub')) th.querySelector('.col-sub').innerText = sub;
+            } else {
+                const pos = document.getElementById('newColPosition').value;
+                const th = document.createElement('th');
+                th.className = "p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]";
+                th.innerHTML = `
+                    <div class="flex flex-col items-center justify-center">
+                        <span class="col-name text-gray-700">${name}</span>
+                        <span class="col-sub text-xs font-normal text-gray-500 mt-1">${sub}</span>
+                    </div>
+                    ${getColControlsHTML()}
+                `;
+
+                const newTds = Array.from(tbodyTrs).map(() => {
+                    const td = document.createElement('td');
+                    td.className = "border-r border-gray-200 align-top p-2";
+                    td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
+                    return td;
+                });
+
+                if (pos === 'end') {
+                    theadTr.appendChild(th);
+                    tbodyTrs.forEach((tr, i) => tr.appendChild(newTds[i]));
+                } else {
+                    const idx = parseInt(pos);
+                    theadTr.insertBefore(th, theadTr.children[idx]);
+                    tbodyTrs.forEach((tr, i) => tr.insertBefore(newTds[i], tr.children[idx]));
+                }
+                initDragAndDrop(); 
+            }
+            closeColModal();
+        }
+
+        function moveCol(btn, dir) {
+            const th = btn.closest('th');
+            const table = document.getElementById('mainTable');
+            const currentIndex = th.cellIndex;
+            const targetIndex = currentIndex + dir;
+            const theadTr = th.parentNode;
+            
+            if (targetIndex < 1 || targetIndex >= theadTr.children.length) return;
+
+            if (dir === 1) {
+                theadTr.insertBefore(th, theadTr.children[targetIndex + 1]);
+            } else {
+                theadTr.insertBefore(th, theadTr.children[targetIndex]);
+            }
+
+            const tbodyTrs = table.querySelectorAll('tbody tr');
+            tbodyTrs.forEach(tr => {
+                const td = tr.children[currentIndex];
+                if (dir === 1) {
+                    tr.insertBefore(td, tr.children[targetIndex + 1]);
+                } else {
+                    tr.insertBefore(td, tr.children[targetIndex]);
+                }
+            });
+        }
+
+        // --- Logica Righe ---
+        function openRowModal() {
+            document.getElementById('rowForm').reset();
+            const select = document.getElementById('newRowPosition');
+            select.innerHTML = '<option value="end">Alla fine</option>';
+            const trs = document.querySelectorAll('tbody tr');
+            trs.forEach((tr, index) => {
+                const catName = tr.querySelector('td:first-child').innerText;
+                select.innerHTML += `<option value="${index}">Prima di: ${catName}</option>`;
+            });
+            document.getElementById('addRowModal').classList.remove('hidden');
+        }
+        function closeRowModal() { document.getElementById('addRowModal').classList.add('hidden'); }
+
+        function submitNewRow(e) {
+            e.preventDefault();
+            const name = document.getElementById('newRowName').value;
+            const color = document.getElementById('newRowCategory').value;
+            const pos = document.getElementById('newRowPosition').value;
+            const tbody = document.querySelector('tbody');
+            const colCount = document.querySelector('thead tr').children.length; 
+
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-200 transition duration-150";
+
+            const tdCat = document.createElement('td');
+            tdCat.className = `p-4 font-semibold text-${color}-700 bg-${color}-50/50 border-r border-gray-200 sticky left-0 z-10`;
+            tdCat.innerText = name;
+            tr.appendChild(tdCat);
+
+            for(let i = 1; i < colCount; i++) {
+                const td = document.createElement('td');
+                td.className = "border-r border-gray-200 align-top p-2";
+                td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
+                tr.appendChild(td);
+            }
+
+            if (pos === 'end') {
+                tbody.appendChild(tr);
+            } else {
+                tbody.insertBefore(tr, tbody.children[parseInt(pos)]);
+            }
+
+            initDragAndDrop();
+            closeRowModal();
+        }
+
+        // --- Logica IMPORT / EXPORT in JSON ---
+        
+        function exportData() {
+            const data = { columns: [], rows: [], tasks: [] };
+
+            // 1. Leggi Colonne
+            const ths = document.querySelectorAll('#mainTable thead th');
+            for (let i = 1; i < ths.length; i++) { // Salta colonna 0 (Categoria)
+                data.columns.push({
+                    name: ths[i].querySelector('.col-name').innerText,
+                    sub: ths[i].querySelector('.col-sub').innerText
+                });
+            }
+
+            // 2. Leggi Righe e Task
+            const trs = document.querySelectorAll('#mainTable tbody tr');
+            trs.forEach((tr, rowIndex) => {
+                const tdCat = tr.querySelector('td:first-child');
+                // Estrae il colore base dalla classe (es: bg-blue-50/50 -> blue)
+                let rowColor = 'gray';
+                const match = tdCat.className.match(/bg-([a-z]+)-50/);
+                if (match) rowColor = match[1];
+
+                data.rows.push({
+                    name: tdCat.innerText,
+                    color: rowColor
+                });
+
+                const tds = tr.querySelectorAll('td');
+                for (let colIndex = 1; colIndex < tds.length; colIndex++) {
+                    const dropZone = tds[colIndex].querySelector('.drop-zone');
+                    if (dropZone) {
+                        const tasks = dropZone.querySelectorAll('.draggable');
+                        tasks.forEach(task => {
+                            data.tasks.push({
+                                id: task.id,
+                                name: task.querySelector('.task-title').innerText,
+                                sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
+                                color: task.getAttribute('data-color'),
+                                location: { type: 'grid', rowIndex: rowIndex, colIndex: colIndex - 1 }
+                            });
+                        });
+                    }
+                }
+            });
+
+            // 3. Leggi Backlog Task
+            const backlogTasks = document.querySelectorAll('#backlog .draggable');
+            backlogTasks.forEach(task => {
+                data.tasks.push({
+                    id: task.id,
+                    name: task.querySelector('.task-title').innerText,
+                    sub: task.querySelector('.task-subtext') ? task.querySelector('.task-subtext').innerText : '',
+                    color: task.getAttribute('data-color'),
+                    location: { type: 'backlog' }
+                });
+            });
+
+            // Genera il file e forza il download
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "piano_orario.json");
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    rebuildTableFromData(data);
+                    document.getElementById('importFile').value = ''; // Reset file input
+                } catch (error) {
+                    alert("Si è verificato un errore durante la lettura del file JSON. Assicurati che sia il file corretto.");
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function rebuildTableFromData(data) {
+            // 1. Ricostruisci Header (Colonne)
+            const theadTr = document.querySelector('#mainTable thead tr');
+            theadTr.innerHTML = '<th class="p-4 font-semibold w-1/6 border-r border-gray-200 bg-gray-100 sticky left-0 z-20">Categoria</th>';
+            
+            data.columns.forEach(col => {
+                const th = document.createElement('th');
+                th.className = "p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[120px]";
+                th.innerHTML = `
+                    <div class="flex flex-col items-center justify-center">
+                        <span class="col-name text-gray-700">${col.name}</span>
+                        <span class="col-sub text-xs font-normal text-gray-500 mt-1">${col.sub}</span>
+                    </div>
+                    ${getColControlsHTML()}
+                `;
+                theadTr.appendChild(th);
+            });
+
+            // 2. Ricostruisci Body (Righe)
+            const tbody = document.querySelector('#mainTable tbody');
+            tbody.innerHTML = ''; 
+            data.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-200 transition duration-150";
+                
+                const tdCat = document.createElement('td');
+                tdCat.className = `p-4 font-semibold text-${row.color}-700 bg-${row.color}-50/50 border-r border-gray-200 sticky left-0 z-10`;
+                tdCat.innerText = row.name;
+                tr.appendChild(tdCat);
+
+                for(let i = 0; i < data.columns.length; i++) {
+                    const td = document.createElement('td');
+                    td.className = "border-r border-gray-200 align-top p-2";
+                    td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+
+            // Pulisci il backlog attuale
+            const backlog = document.getElementById('backlog');
+            backlog.querySelectorAll('.draggable').forEach(el => el.remove());
+
+            // 3. Riposiziona i Task
+            taskCounter = 100; // Reset counter base
+
+            data.tasks.forEach(t => {
+                // Aggiorna il counter se l'id del task importato è più alto
+                const idNum = parseInt(t.id.replace('task-', ''));
+                if (!isNaN(idNum) && idNum >= taskCounter) {
+                    taskCounter = idNum;
+                }
+
+                const borderClass = `border-${t.color === 'gray' ? 'gray-300' : t.color + '-200'}`;
+                const borderLeftClass = `border-l-4 border-l-${t.color === 'gray' ? 'gray-500' : t.color + '-500'}`;
+                
+                const taskDiv = document.createElement('div');
+                taskDiv.id = t.id;
+                taskDiv.draggable = true;
+                taskDiv.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm ${borderLeftClass} relative group min-w-[150px]`;
+                taskDiv.setAttribute('data-color', t.color);
+                taskDiv.innerHTML = getTaskHTML(t.id, t.name, t.sub, t.color);
+
+                if (t.location.type === 'backlog') {
+                    backlog.appendChild(taskDiv);
+                } else if (t.location.type === 'grid') {
+                    const targetTr = tbody.children[t.location.rowIndex];
+                    if (targetTr) {
+                        const targetTd = targetTr.children[t.location.colIndex + 1]; // +1 per skippare la colonna Categoria
+                        if (targetTd) {
+                            const dropZone = targetTd.querySelector('.drop-zone');
+                            if (dropZone) dropZone.appendChild(taskDiv);
+                        }
+                    }
+                }
+            });
+
+            initDragAndDrop();
+            checkBacklogEmpty();
+        }
+
+        // --- Utility ---
+        function checkBacklogEmpty() {
+            const backlog = document.getElementById('backlog');
+            const text = document.getElementById('backlog-empty-text');
+            const hasDraggables = backlog.querySelectorAll('.draggable').length > 0;
+            if (hasDraggables) {
+                text.style.display = 'none';
+            } else {
+                text.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDragAndDrop();
+            checkBacklogEmpty();
+        });
+
+    </script>
+</body>
+</html>
