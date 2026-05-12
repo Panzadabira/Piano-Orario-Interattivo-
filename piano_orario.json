@@ -1,0 +1,250 @@
+{
+  "columns": [
+    {
+      "name": "KVK",
+      "sub": ""
+    },
+    {
+      "name": "RS 4",
+      "sub": ""
+    },
+    {
+      "name": "RS 8 - 13",
+      "sub": ""
+    },
+    {
+      "name": "RS 13",
+      "sub": ""
+    },
+    {
+      "name": "RS 14",
+      "sub": "LUNEDÌ - VENERDÌ"
+    },
+    {
+      "name": "RS 15",
+      "sub": "MARTEDÌ - VENERDÌ"
+    },
+    {
+      "name": "POST ISTRUZIONE",
+      "sub": ""
+    }
+  ],
+  "rows": [
+    {
+      "name": "Personale",
+      "color": "blue"
+    },
+    {
+      "name": "Istruzione",
+      "color": "green"
+    },
+    {
+      "name": "Logistica",
+      "color": "orange"
+    },
+    {
+      "name": "Condotta",
+      "color": "purple"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Richieste di personale per istruzione",
+      "sub": "",
+      "color": "blue",
+      "location": {
+        "type": "grid",
+        "rowIndex": 0,
+        "colIndex": 1
+      }
+    },
+    {
+      "id": "task-101",
+      "name": "RIT",
+      "sub": "",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 1
+      }
+    },
+    {
+      "id": "task-102",
+      "name": "RIP",
+      "sub": "",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 2
+      }
+    },
+    {
+      "id": "task-107",
+      "name": "Prescrizioni di sicurezza",
+      "sub": "",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-2",
+      "name": "Prime manipolazioni",
+      "sub": "",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-103",
+      "name": "Preparazione Arma",
+      "sub": "",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-3",
+      "name": "MODUL A (AdA erzhien 7h)",
+      "sub": "Lunedì",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 4
+      }
+    },
+    {
+      "id": "task-4",
+      "name": "Manip + AdA einstellen + Waffe einschiessen (6h)",
+      "sub": "Venerdì",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 4
+      }
+    },
+    {
+      "id": "task-5",
+      "name": "Tiro distanza di comunicazione + 300m (6h)",
+      "sub": "Martedì",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 5
+      }
+    },
+    {
+      "id": "task-6",
+      "name": "Modulo \"Collettivo\" + 300m (4h)",
+      "sub": "Venerdì",
+      "color": "green",
+      "location": {
+        "type": "grid",
+        "rowIndex": 1,
+        "colIndex": 5
+      }
+    },
+    {
+      "id": "task-104",
+      "name": "Presa dotazione Mun",
+      "sub": "",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 0
+      }
+    },
+    {
+      "id": "task-105",
+      "name": "Comanda sussistenza",
+      "sub": "",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 2
+      }
+    },
+    {
+      "id": "task-106",
+      "name": "Comanda trasporti",
+      "sub": "",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 2
+      }
+    },
+    {
+      "id": "task-7",
+      "name": "Presa armi",
+      "sub": "In prestito",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-9",
+      "name": "Comandare munizione",
+      "sub": "",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-10",
+      "name": "Comandare piazze di tiro",
+      "sub": "",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 3
+      }
+    },
+    {
+      "id": "task-8",
+      "name": "Resa Armi",
+      "sub": "in prestito",
+      "color": "orange",
+      "location": {
+        "type": "grid",
+        "rowIndex": 2,
+        "colIndex": 6
+      }
+    },
+    {
+      "id": "task-108",
+      "name": "Iscrizione Milo",
+      "sub": "",
+      "color": "purple",
+      "location": {
+        "type": "grid",
+        "rowIndex": 3,
+        "colIndex": 6
+      }
+    }
+  ]
+}
