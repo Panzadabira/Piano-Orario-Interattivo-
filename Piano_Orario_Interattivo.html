@@ -32,7 +32,7 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
-        /* Forza la colonna categoria a restare visibile durante lo scroll orizzontale */
+        /* Mantiene la colonna categoria visibile durante lo scroll orizzontale */
         .sticky-col {
             position: sticky;
             left: 0;
@@ -48,7 +48,7 @@
         <div class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Gestore Piano Orario RS</h1>
-                <p class="text-gray-600">Sincronizzazione Cloud attiva. Ogni modifica viene salvata in tempo reale.</p>
+                <p class="text-gray-600">Sincronizzazione Cloud attiva. I dati sono salvati nel tuo database Firebase.</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
@@ -90,11 +90,11 @@
                 <thead>
                     <tr class="bg-gray-50 text-gray-700 text-xs uppercase tracking-wider border-b border-gray-200">
                         <th class="p-4 font-bold w-48 border-r border-gray-200 bg-gray-100 sticky-col shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Categoria</th>
-                        <!-- Le colonne verranno generate dinamicamente dal Cloud/JSON -->
+                        <!-- Colonne dinamiche -->
                     </tr>
                 </thead>
                 <tbody class="text-gray-800 text-sm">
-                    <!-- Le righe verranno generate dinamicamente -->
+                    <!-- Righe dinamiche -->
                 </tbody>
             </table>
         </div>
@@ -111,7 +111,7 @@
         </div>
     </div>
 
-    <!-- MODALE TASK -->
+    <!-- MODALI -->
     <div id="addModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md mx-4">
             <h2 id="modalTitle" class="text-xl font-bold mb-4">Dettagli Task</h2>
@@ -146,7 +146,6 @@
         </div>
     </div>
 
-    <!-- MODALE COLONNA -->
     <div id="addColModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md mx-4">
             <h2 id="colModalTitle" class="text-xl font-bold mb-4">Gestione Colonna</h2>
@@ -165,13 +164,12 @@
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" onclick="window.closeColModal()" class="px-4 py-2 text-gray-500 font-semibold hover:bg-gray-100 rounded-lg">Annulla</button>
-                    <button type="submit" id="colModalSubmitBtn" class="px-6 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-black transition">AGGIUNGI</button>
+                    <button type="submit" id="colModalSubmitBtn" class="px-6 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-black transition">SALVA</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODALE RIGA -->
     <div id="addRowModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md mx-4">
             <h2 class="text-xl font-bold mb-4">Aggiungi Nuova Riga</h2>
@@ -221,19 +219,17 @@
         };
 
         // VARIABILI GLOBALI
-        window.taskCounter = Date.now(); // Usa il timestamp per evitare ID duplicati
+        window.taskCounter = Date.now();
         window.editingTaskId = null;
         window.editingColIndex = null;
         
-        let db;
-        let auth;
+        let db, auth;
         let isUpdatingFromCloud = false;
         const appId = 'planner-rs-v1-main';
 
-        // --- FUNZIONE PER LEGGERE IL JSON DA GITHUB COME BACKUP/AVVIO ---
+        // --- FUNZIONE FALLBACK: CARICA JSON DA GITHUB ---
         async function loadDataFromGitHub() {
             try {
-                // Cerca il file piano_orario.json nella stessa cartella di GitHub
                 const response = await fetch('./piano_orario.json');
                 if (response.ok) {
                     const data = await response.json();
@@ -241,12 +237,12 @@
                     return true;
                 }
             } catch (error) {
-                console.log("Nessun JSON locale trovato su GitHub o errore di caricamento.");
+                console.log("Fallback JSON non trovato.");
             }
             return false;
         }
 
-        // --- INIZIALIZZAZIONE CLOUD ---
+        // --- INIZIALIZZAZIONE ---
         try {
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
@@ -254,33 +250,22 @@
 
             updateCloudUI('connecting');
             
-            // Autenticazione anonima per permettere la lettura/scrittura
             signInAnonymously(auth).then(() => {
                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        setupCloudListener();
-                    } else {
-                        updateCloudUI('offline');
-                        loadDataFromGitHub(); // Fallback se offline
-                    }
+                    if (user) setupCloudListener();
+                    else { updateCloudUI('offline'); loadDataFromGitHub(); }
                 });
-            }).catch(error => {
-                console.error("Autenticazione fallita:", error);
-                updateCloudUI('offline');
-                loadDataFromGitHub(); // Fallback se fallisce l'autenticazione
-            });
-        } catch (error) {
-            console.error("Inizializzazione Firebase fallita:", error);
+            }).catch(e => { updateCloudUI('offline'); loadDataFromGitHub(); });
+        } catch (e) {
             updateCloudUI('offline');
-            loadDataFromGitHub(); // Fallback se fallisce l'avvio di Firebase
+            loadDataFromGitHub();
         }
 
-        // --- GESTIONE STATO UI CLOUD ---
+        // --- STATO CLOUD ---
         function updateCloudUI(status) {
             const dot = document.getElementById('cloud-dot');
             const ping = document.getElementById('cloud-ping');
             const text = document.getElementById('cloud-text');
-            
             if (status === 'offline') {
                 dot.className = "relative inline-flex rounded-full h-3 w-3 bg-red-400";
                 ping.classList.add('hidden');
@@ -300,223 +285,119 @@
             }
         }
 
-        // --- LETTURA DATI DAL CLOUD ---
+        // --- ASCOLTO CLOUD (CORRETTO CON 6 SEGMENTI) ---
         function setupCloudListener() {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state');
+            // PERCORSO CORRETTO: artifacts / {appId} / public / data / planner_state / main
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state', 'main');
             
             onSnapshot(docRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     isUpdatingFromCloud = true;
                     rebuildTableFromData(docSnap.data());
-                    
-                    // Pausa per evitare loop di salvataggio durante l'aggiornamento
-                    setTimeout(() => {
-                        isUpdatingFromCloud = false;
-                    }, 500);
+                    setTimeout(() => { isUpdatingFromCloud = false; }, 500);
                 } else {
-                    // SE IL CLOUD È VUOTO, PROVA PRIMA A LEGGERE IL JSON DA GITHUB
-                    const loadedFromGithub = await loadDataFromGitHub();
-                    
-                    if (!loadedFromGithub) {
-                        // Genera una tabella di base se anche il file locale non esiste
-                        const initialData = {
-                            columns: [
-                                {name: 'RS 4', sub: ''}, 
-                                {name: 'RS 8', sub: ''}, 
-                                {name: 'RS 13', sub: ''}
-                            ],
-                            rows: [
-                                {name: 'Personale', color: 'blue'}, 
-                                {name: 'Istruzione', color: 'green'}
-                            ],
+                    const loaded = await loadDataFromGitHub();
+                    if (!loaded) {
+                        const initial = {
+                            columns: [{name: 'RS 4', sub: ''}, {name: 'RS 8', sub: ''}, {name: 'RS 13', sub: ''}],
+                            rows: [{name: 'Personale', color: 'blue'}, {name: 'Istruzione', color: 'green'}],
                             tasks: []
                         };
-                        rebuildTableFromData(initialData);
+                        rebuildTableFromData(initial);
                     } else {
-                        // Se ha caricato con successo il file da GitHub, salvalo sul Cloud!
-                        window.saveToCloud();
+                        window.saveToCloud(); // Salva sul cloud i dati del JSON
                     }
                 }
                 updateCloudUI('synced');
             }, (err) => {
-                console.error("Errore onSnapshot:", err);
                 updateCloudUI('offline');
-                loadDataFromGitHub(); // Fallback se c'è un blocco di permessi
+                loadDataFromGitHub();
             });
         }
 
-        // --- SCRITTURA DATI SUL CLOUD ---
+        // --- SALVATAGGIO CLOUD (CORRETTO CON 6 SEGMENTI) ---
         window.saveToCloud = async function() {
-            if (!db || !auth.currentUser || isUpdatingFromCloud) {
-                return;
-            }
-            
+            if (!db || !auth.currentUser || isUpdatingFromCloud) return;
             updateCloudUI('saving');
-            
             try {
                 const data = window.getPlannerData();
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'planner_state'), data);
-                
-                setTimeout(() => {
-                    updateCloudUI('synced');
-                }, 500);
-            } catch (error) {
-                console.error("Salvataggio fallito:", error);
-                updateCloudUI('offline');
-            }
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'planner_state', 'main');
+                await setDoc(docRef, data);
+                setTimeout(() => updateCloudUI('synced'), 500);
+            } catch (e) { updateCloudUI('offline'); }
         };
 
-        // --- ESTRAZIONE DATI DALL'INTERFACCIA (per Cloud e Export JSON) ---
+        // --- ESTRAZIONE DATI ---
         window.getPlannerData = function() {
-            const data = { 
-                columns: [], 
-                rows: [], 
-                tasks: [] 
-            };
-            
-            // Estrai colonne
+            const data = { columns: [], rows: [], tasks: [] };
             const ths = document.querySelectorAll('#mainTable thead th');
             for (let i = 1; i < ths.length; i++) {
-                const nameNode = ths[i].querySelector('.col-name');
-                const subNode = ths[i].querySelector('.col-sub');
-                
                 data.columns.push({
-                    name: nameNode ? nameNode.innerText : '',
-                    sub: subNode ? subNode.innerText : ''
+                    name: ths[i].querySelector('.col-name').innerText,
+                    sub: ths[i].querySelector('.col-sub').innerText
                 });
             }
-            
-            // Estrai righe
             const trs = document.querySelectorAll('#mainTable tbody tr');
             trs.forEach((tr, rowIndex) => {
                 const tdCat = tr.querySelector('td:first-child');
                 let rowColor = 'gray';
-                
-                // Cerca la classe del colore (es. text-blue-700)
                 const match = tdCat.className.match(/text-([a-z]+)-700/);
-                if (match) {
-                    rowColor = match[1];
-                }
-                
-                data.rows.push({ 
-                    name: tdCat.innerText, 
-                    color: rowColor 
-                });
-                
-                // Estrai task nelle celle della griglia
+                if (match) rowColor = match[1];
+                data.rows.push({ name: tdCat.innerText, color: rowColor });
                 const tds = tr.querySelectorAll('td');
                 for (let colIndex = 1; colIndex < tds.length; colIndex++) {
                     const dropZone = tds[colIndex].querySelector('.drop-zone');
                     if (dropZone) {
-                        const tasksInZone = dropZone.querySelectorAll('.draggable');
-                        tasksInZone.forEach(task => {
-                            const titleNode = task.querySelector('.task-title');
-                            const subNode = task.querySelector('.task-subtext');
-                            
+                        dropZone.querySelectorAll('.draggable').forEach(task => {
                             data.tasks.push({
                                 id: task.id,
-                                name: titleNode ? titleNode.innerText : '',
-                                sub: subNode ? subNode.innerText : '',
+                                name: task.querySelector('.task-title').innerText,
+                                sub: task.querySelector('.task-subtext')?.innerText || '',
                                 color: task.getAttribute('data-color'),
-                                location: { 
-                                    type: 'grid', 
-                                    rowIndex: rowIndex, 
-                                    colIndex: colIndex - 1 
-                                }
+                                location: { type: 'grid', rowIndex: rowIndex, colIndex: colIndex - 1 }
                             });
                         });
                     }
                 }
             });
-            
-            // Estrai task nel backlog
-            const backlogTasks = document.querySelectorAll('#backlog .draggable');
-            backlogTasks.forEach(task => {
-                const titleNode = task.querySelector('.task-title');
-                const subNode = task.querySelector('.task-subtext');
-                
+            document.querySelectorAll('#backlog .draggable').forEach(task => {
                 data.tasks.push({
                     id: task.id,
-                    name: titleNode ? titleNode.innerText : '',
-                    sub: subNode ? subNode.innerText : '',
+                    name: task.querySelector('.task-title').innerText,
+                    sub: task.querySelector('.task-subtext')?.innerText || '',
                     color: task.getAttribute('data-color'),
-                    location: { 
-                        type: 'backlog' 
-                    }
+                    location: { type: 'backlog' }
                 });
             });
-            
             return data;
         };
 
-        // --- GESTIONE DRAG & DROP ---
+        // --- DRAG & DROP ---
         window.initDragAndDrop = function() {
-            // Gestione elementi trascinabili (Draggables)
-            const draggables = document.querySelectorAll('.draggable');
-            draggables.forEach(draggable => {
-                draggable.removeEventListener('dragstart', window.dragStart);
-                draggable.removeEventListener('dragend', window.dragEnd);
-                draggable.addEventListener('dragstart', window.dragStart);
-                draggable.addEventListener('dragend', window.dragEnd);
+            document.querySelectorAll('.draggable').forEach(d => {
+                d.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('text/plain', e.target.id);
+                    e.target.classList.add('opacity-40');
+                });
+                d.addEventListener('dragend', e => {
+                    e.target.classList.remove('opacity-40');
+                    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+                    window.checkBacklogEmpty();
+                });
             });
-
-            // Gestione aree di rilascio (Drop Zones)
-            const dropZones = document.querySelectorAll('.drop-zone');
-            dropZones.forEach(zone => {
-                zone.removeEventListener('dragover', window.dragOver);
-                zone.removeEventListener('dragleave', window.dragLeave);
-                zone.removeEventListener('drop', window.drop);
-                zone.addEventListener('dragover', window.dragOver);
-                zone.addEventListener('dragleave', window.dragLeave);
-                zone.addEventListener('drop', window.drop);
+            document.querySelectorAll('.drop-zone').forEach(z => {
+                z.addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.drop-zone').classList.add('drag-over'); });
+                z.addEventListener('dragleave', e => { e.target.closest('.drop-zone').classList.remove('drag-over'); });
+                z.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const zone = e.target.closest('.drop-zone');
+                    const draggable = document.getElementById(e.dataTransfer.getData('text/plain'));
+                    if (zone && draggable) { zone.appendChild(draggable); window.saveToCloud(); }
+                });
             });
         };
 
-        window.dragStart = function(event) {
-            event.dataTransfer.setData('text/plain', event.target.id);
-            setTimeout(() => {
-                event.target.classList.add('opacity-40');
-            }, 0);
-        };
-
-        window.dragEnd = function(event) {
-            event.target.classList.remove('opacity-40');
-            const dropZones = document.querySelectorAll('.drop-zone');
-            dropZones.forEach(zone => {
-                zone.classList.remove('drag-over');
-            });
-            window.checkBacklogEmpty();
-        };
-
-        window.dragOver = function(event) {
-            event.preventDefault();
-            const zone = event.target.closest('.drop-zone');
-            if (zone) {
-                zone.classList.add('drag-over');
-            }
-        };
-
-        window.dragLeave = function(event) {
-            const zone = event.target.closest('.drop-zone');
-            if (zone) {
-                zone.classList.remove('drag-over');
-            }
-        };
-
-        window.drop = function(event) {
-            event.preventDefault();
-            const zone = event.target.closest('.drop-zone');
-            const id = event.dataTransfer.getData('text/plain');
-            const draggable = document.getElementById(id);
-            
-            if (zone && draggable) {
-                zone.classList.remove('drag-over');
-                zone.appendChild(draggable);
-                window.saveToCloud();
-            }
-        };
-
-        // --- GESTIONE MODALE TASK ---
+        // --- AZIONI TASK ---
         window.openModal = function() {
             window.editingTaskId = null;
             document.getElementById('taskForm').reset();
@@ -526,427 +407,196 @@
         };
 
         window.editTask = function(id, event) {
-            if (event) { 
-                event.preventDefault(); 
-                event.stopPropagation(); 
-            }
+            if (event) { event.preventDefault(); event.stopPropagation(); }
             window.editingTaskId = id;
             const el = document.getElementById(id);
-            
-            const titleNode = el.querySelector('.task-title');
-            const subNode = el.querySelector('.task-subtext');
-            
-            document.getElementById('newTaskName').value = titleNode ? titleNode.innerText : '';
-            document.getElementById('newTaskSub').value = subNode ? subNode.innerText : '';
+            document.getElementById('newTaskName').value = el.querySelector('.task-title').innerText;
+            document.getElementById('newTaskSub').value = el.querySelector('.task-subtext')?.innerText || '';
             document.getElementById('newTaskCategory').value = el.getAttribute('data-color') || 'gray';
-            
             document.getElementById('modalTitle').innerText = 'Modifica Task';
             document.getElementById('modalDeleteBtn').classList.remove('hidden');
             document.getElementById('addModal').classList.remove('hidden');
         };
 
-        window.closeModal = function() {
-            document.getElementById('addModal').classList.add('hidden');
-            window.editingTaskId = null;
-        };
-
-        window.deleteTaskFromModal = function() {
-            if (window.editingTaskId) {
-                const el = document.getElementById(window.editingTaskId);
-                if (el) {
-                    el.remove();
-                }
-                window.saveToCloud();
-                window.closeModal();
-                window.checkBacklogEmpty();
-            }
-        };
-
-        window.submitNewTask = function(event) {
-            event.preventDefault();
+        window.submitNewTask = function(e) {
+            e.preventDefault();
             const name = document.getElementById('newTaskName').value;
             const sub = document.getElementById('newTaskSub').value;
             const color = document.getElementById('newTaskCategory').value;
-
             if (window.editingTaskId) {
-                // Modifica task esistente
                 const el = document.getElementById(window.editingTaskId);
                 el.setAttribute('data-color', color);
-                
-                // Rimuovi classi colori precedenti
                 const colors = ['blue', 'green', 'orange', 'purple', 'gray', 'red'];
-                colors.forEach(c => {
-                    el.classList.remove(`border-${c}-200`, `border-l-${c}-500`);
-                });
-                
-                // Aggiungi nuove classi colore
-                const borderClass = color === 'gray' ? 'gray-300' : `${color}-200`;
-                const leftClass = color === 'gray' ? 'gray-500' : `${color}-500`;
-                el.classList.add(`border-${borderClass}`, `border-l-${leftClass}`);
-                
-                // Aggiorna HTML interno
+                colors.forEach(c => el.classList.remove(`border-${c}-200`, `border-l-${c}-500`));
+                el.classList.add(`border-${color === 'gray' ? 'gray-300' : color + '-200'}`, `border-l-${color === 'gray' ? 'gray-500' : color + '-500'}`);
                 el.innerHTML = window.getTaskHTML(window.editingTaskId, name, sub, color);
             } else {
-                // Creazione nuovo task
                 window.taskCounter++;
                 const newId = 'task-' + window.taskCounter;
                 const div = document.createElement('div');
-                div.id = newId;
-                div.draggable = true;
-                
-                const borderClass = color === 'gray' ? 'border-gray-300' : `border-${color}-200`;
-                const leftClass = color === 'gray' ? 'border-l-gray-500' : `border-l-${color}-500`;
-                
-                div.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm border-l-4 ${leftClass} relative group min-w-[150px]`;
+                div.id = newId; div.draggable = true;
+                const bC = color === 'gray' ? 'gray-300' : `${color}-200`;
+                const lC = color === 'gray' ? 'gray-500' : `${color}-500`;
+                div.className = `draggable bg-white border border-${bC} p-3 rounded shadow-sm border-l-4 border-l-${lC} relative group min-w-[150px]`;
                 div.setAttribute('data-color', color);
                 div.innerHTML = window.getTaskHTML(newId, name, sub, color);
-                
                 document.getElementById('backlog').appendChild(div);
             }
-            
-            window.closeModal();
-            window.initDragAndDrop();
-            window.saveToCloud();
+            window.closeModal(); window.initDragAndDrop(); window.saveToCloud();
         };
 
-        // Generatore HTML interno del Task
-        window.getTaskHTML = function(id, name, sub, color) {
-            let html = '';
-            if (sub) {
-                html += `<span class="task-subtext inline-block bg-gray-100 text-gray-600 text-[10px] uppercase px-1.5 py-0.5 rounded mb-2 font-bold w-full text-center">${sub}</span>`;
-            }
-            html += `<span class="task-title font-semibold block text-center">${name}</span>`;
-            html += `<button type="button" onclick="window.editTask('${id}', event)" class="absolute top-1 right-1 text-blue-400 opacity-0 group-hover:opacity-100 transition hover:text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>`;
-            return html;
-        };
+        window.getTaskHTML = (id, name, sub, color) => `
+            ${sub ? `<span class="task-subtext inline-block bg-gray-100 text-gray-600 text-[10px] uppercase px-1.5 py-0.5 rounded mb-2 font-bold w-full text-center">${sub}</span>` : ''}
+            <span class="task-title font-semibold block text-center">${name}</span>
+            <button type="button" onclick="window.editTask('${id}', event)" class="absolute top-1 right-1 text-blue-400 opacity-0 group-hover:opacity-100 transition hover:text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+        `;
 
-        // --- GESTIONE MODALE COLONNE ---
-        window.openColModal = function() {
+        window.deleteTaskFromModal = () => { if (window.editingTaskId) { document.getElementById(window.editingTaskId).remove(); window.saveToCloud(); window.closeModal(); window.checkBacklogEmpty(); }};
+        window.closeModal = () => document.getElementById('addModal').classList.add('hidden');
+
+        // --- AZIONI COLONNE ---
+        window.openColModal = () => {
             window.editingColIndex = null;
             document.getElementById('colForm').reset();
             document.getElementById('colModalTitle').innerText = 'Aggiungi Colonna';
             document.getElementById('colPositionContainer').classList.remove('hidden');
-            
-            // Popola il menu a tendina delle posizioni
             const select = document.getElementById('newColPosition');
             select.innerHTML = '<option value="end">Alla fine</option>';
-            
-            const ths = document.querySelectorAll('thead th');
-            ths.forEach((th, i) => {
-                if (i > 0) {
-                    const nameNode = th.querySelector('.col-name');
-                    const colName = nameNode ? nameNode.innerText : `Colonna ${i}`;
-                    select.innerHTML += `<option value="${i}">Prima di: ${colName}</option>`;
-                }
-            });
-            
+            document.querySelectorAll('thead th').forEach((th, i) => { if (i > 0) select.innerHTML += `<option value="${i}">Prima di: ${th.querySelector('.col-name').innerText}</option>`; });
             document.getElementById('addColModal').classList.remove('hidden');
         };
 
-        window.openEditColModal = function(btn) {
+        window.openEditColModal = (btn) => {
             const th = btn.closest('th');
             window.editingColIndex = th.cellIndex;
-            
-            const nameNode = th.querySelector('.col-name');
-            const subNode = th.querySelector('.col-sub');
-            
-            document.getElementById('newColName').value = nameNode ? nameNode.innerText : '';
-            document.getElementById('newColSub').value = subNode ? subNode.innerText : '';
-            
+            document.getElementById('newColName').value = th.querySelector('.col-name').innerText;
+            document.getElementById('newColSub').value = th.querySelector('.col-sub').innerText;
             document.getElementById('colModalTitle').innerText = 'Modifica Colonna';
             document.getElementById('colPositionContainer').classList.add('hidden');
             document.getElementById('addColModal').classList.remove('hidden');
         };
 
-        window.closeColModal = function() {
-            document.getElementById('addColModal').classList.add('hidden');
-        };
-
-        window.submitNewCol = function(event) {
-            event.preventDefault();
+        window.submitNewCol = (e) => {
+            e.preventDefault();
             const name = document.getElementById('newColName').value;
             const sub = document.getElementById('newColSub').value;
-            
-            const theadTr = document.querySelector('thead tr');
-            const tbodyTrs = document.querySelectorAll('tbody tr');
-            
             if (window.editingColIndex !== null) {
-                // Modifica colonna
-                const th = theadTr.children[window.editingColIndex];
-                const nameNode = th.querySelector('.col-name');
-                const subNode = th.querySelector('.col-sub');
-                
-                if (nameNode) nameNode.innerText = name;
-                if (subNode) subNode.innerText = sub;
+                const th = document.querySelector('thead tr').children[window.editingColIndex];
+                th.querySelector('.col-name').innerText = name;
+                th.querySelector('.col-sub').innerText = sub;
             } else {
-                // Aggiunta colonna
                 const pos = document.getElementById('newColPosition').value;
                 const th = document.createElement('th');
                 th.className = "p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[150px]";
-                
-                let thHtml = `<div class="flex flex-col items-center justify-center">`;
-                thHtml += `<span class="col-name text-gray-700">${name}</span>`;
-                thHtml += `<span class="col-sub text-[10px] font-normal text-gray-400 mt-1">${sub}</span>`;
-                thHtml += `</div>`;
-                thHtml += `<div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">`;
-                thHtml += `<button onclick="window.moveCol(this, -1)" class="text-gray-400 hover:text-blue-600">&lt;</button>`;
-                thHtml += `<button onclick="window.openEditColModal(this)" class="text-gray-400 hover:text-green-600 px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>`;
-                thHtml += `<button onclick="window.moveCol(this, 1)" class="text-gray-400 hover:text-blue-600">&gt;</button>`;
-                thHtml += `</div>`;
-                
-                th.innerHTML = thHtml;
-                
+                th.innerHTML = `<div class="flex flex-col items-center justify-center"><span class="col-name text-gray-700">${name}</span><span class="col-sub text-[10px] font-normal text-gray-400 mt-1">${sub}</span></div>
+                    <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                        <button onclick="window.moveCol(this, -1)" class="text-gray-400 hover:text-blue-600">&lt;</button>
+                        <button onclick="window.openEditColModal(this)" class="text-gray-400 hover:text-green-600 px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                        <button onclick="window.moveCol(this, 1)" class="text-gray-400 hover:text-blue-600">&gt;</button>
+                    </div>`;
+                const thead = document.querySelector('thead tr');
                 if (pos === 'end') {
-                    theadTr.appendChild(th);
-                    tbodyTrs.forEach(tr => {
-                        const td = document.createElement('td');
-                        td.className = "border-r border-gray-200 align-top p-2";
-                        td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
-                        tr.appendChild(td);
-                    });
+                    thead.appendChild(th);
+                    document.querySelectorAll('tbody tr').forEach(tr => { const td = document.createElement('td'); td.className = "border-r border-gray-200 align-top p-2"; td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>'; tr.appendChild(td); });
                 } else {
                     const idx = parseInt(pos);
-                    theadTr.insertBefore(th, theadTr.children[idx]);
-                    tbodyTrs.forEach(tr => {
-                        const td = document.createElement('td');
-                        td.className = "border-r border-gray-200 align-top p-2";
-                        td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
-                        tr.insertBefore(td, tr.children[idx]);
-                    });
+                    thead.insertBefore(th, thead.children[idx]);
+                    document.querySelectorAll('tbody tr').forEach(tr => { const td = document.createElement('td'); td.className = "border-r border-gray-200 align-top p-2"; td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>'; tr.insertBefore(td, tr.children[idx]); });
                 }
             }
-            
-            window.closeColModal(); 
-            window.initDragAndDrop(); 
+            document.getElementById('addColModal').classList.add('hidden'); window.initDragAndDrop(); window.saveToCloud();
+        };
+
+        window.moveCol = (btn, dir) => {
+            const th = btn.closest('th'); const cur = th.cellIndex; const tar = cur + dir;
+            if (tar < 1 || tar >= th.parentNode.children.length) return;
+            th.parentNode.insertBefore(th, dir === 1 ? th.parentNode.children[tar + 1] : th.parentNode.children[tar]);
+            document.querySelectorAll('tbody tr').forEach(tr => tr.insertBefore(tr.children[cur], dir === 1 ? tr.children[tar + 1] : tr.children[tar]));
             window.saveToCloud();
         };
 
-        window.moveCol = function(btn, dir) {
-            const th = btn.closest('th'); 
-            const currentIndex = th.cellIndex; 
-            const targetIndex = currentIndex + dir;
-            const theadTr = th.parentNode;
-            
-            // Blocca spostamento oltre i limiti (o scambiandolo con la Categoria)
-            if (targetIndex < 1 || targetIndex >= theadTr.children.length) {
-                return;
-            }
-            
-            // Sposta Header
-            if (dir === 1) {
-                theadTr.insertBefore(th, theadTr.children[targetIndex + 1]);
-            } else {
-                theadTr.insertBefore(th, theadTr.children[targetIndex]);
-            }
-            
-            // Sposta Celle in tutte le righe
-            const tbodyTrs = document.querySelectorAll('tbody tr');
-            tbodyTrs.forEach(tr => {
-                const td = tr.children[currentIndex];
-                if (dir === 1) {
-                    tr.insertBefore(td, tr.children[targetIndex + 1]);
-                } else {
-                    tr.insertBefore(td, tr.children[targetIndex]);
-                }
-            });
-            
-            window.saveToCloud();
-        };
+        window.closeColModal = () => document.getElementById('addColModal').classList.add('hidden');
 
-        // --- GESTIONE MODALE RIGHE ---
-        window.openRowModal = function() {
+        // --- AZIONI RIGHE ---
+        window.openRowModal = () => {
             document.getElementById('rowForm').reset();
             const select = document.getElementById('newRowPosition');
             select.innerHTML = '<option value="end">Alla fine</option>';
-            
-            const trs = document.querySelectorAll('tbody tr');
-            trs.forEach((tr, i) => {
-                const tdCat = tr.querySelector('td');
-                const catName = tdCat ? tdCat.innerText : `Riga ${i}`;
-                select.innerHTML += `<option value="${i}">Prima di: ${catName}</option>`;
-            });
-            
+            document.querySelectorAll('tbody tr').forEach((tr, i) => { select.innerHTML += `<option value="${i}">Prima di: ${tr.querySelector('td').innerText}</option>`; });
             document.getElementById('addRowModal').classList.remove('hidden');
         };
 
-        window.closeRowModal = function() {
-            document.getElementById('addRowModal').classList.add('hidden');
-        };
-
-        window.submitNewRow = function(event) {
-            event.preventDefault();
+        window.submitNewRow = (e) => {
+            e.preventDefault();
             const name = document.getElementById('newRowName').value;
             const color = document.getElementById('newRowCategory').value;
             const pos = document.getElementById('newRowPosition').value;
-            
-            const tr = document.createElement('tr');
-            tr.className = "border-b border-gray-200 transition duration-150";
-            
+            const tr = document.createElement('tr'); tr.className = "border-b border-gray-200 transition duration-150";
             const tdCat = document.createElement('td');
             tdCat.className = `p-4 font-bold text-${color}-700 bg-${color}-50/50 border-r border-gray-200 sticky-col shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`;
-            tdCat.innerText = name;
-            tr.appendChild(tdCat);
-            
+            tdCat.innerText = name; tr.appendChild(tdCat);
             const colsCount = document.querySelectorAll('thead th').length - 1;
-            for (let i = 0; i < colsCount; i++) {
-                const td = document.createElement('td');
-                td.className = "border-r border-gray-200 align-top p-2";
-                td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
-                tr.appendChild(td);
-            }
-            
+            for (let i = 0; i < colsCount; i++) { const td = document.createElement('td'); td.className = "border-r border-gray-200 align-top p-2"; td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>'; tr.appendChild(td); }
             const tbody = document.querySelector('tbody');
-            if (pos === 'end') {
-                tbody.appendChild(tr);
-            } else {
-                const idx = parseInt(pos);
-                tbody.insertBefore(tr, tbody.children[idx]);
-            }
-            
-            window.initDragAndDrop(); 
-            window.closeRowModal(); 
-            window.saveToCloud();
+            if (pos === 'end') tbody.appendChild(tr); else tbody.insertBefore(tr, tbody.children[parseInt(pos)]);
+            window.initDragAndDrop(); document.getElementById('addRowModal').classList.add('hidden'); window.saveToCloud();
         };
 
-        // --- IMPORTAZIONE E ESPORTAZIONE JSON LOCAL ---
-        window.exportData = function() {
-            const data = window.getPlannerData();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-            
-            const a = document.createElement('a'); 
-            a.href = dataStr; 
-            a.download = "backup_piano_orario.json"; 
-            
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+        window.closeRowModal = () => document.getElementById('addRowModal').classList.add('hidden');
+
+        // --- IMPORT/EXPORT ---
+        window.exportData = () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.getPlannerData(), null, 2));
+            const a = document.createElement('a'); a.href = dataStr; a.download = "backup_piano_orario.json"; a.click();
         };
 
-        window.importData = function(event) {
-            const file = event.target.files[0]; 
-            if (!file) return;
-            
+        window.importData = (e) => {
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    rebuildTableFromData(data);
-                    window.saveToCloud();
-                } catch (error) {
-                    console.error("Errore importazione file:", error);
-                    alert("Errore nell'importazione del file JSON.");
-                }
-            };
-            reader.readAsText(file);
-            
-            // Resetta l'input file per permettere nuove ricariche dello stesso file
-            event.target.value = '';
+            reader.onload = (ev) => { try { rebuildTableFromData(JSON.parse(ev.target.result)); window.saveToCloud(); } catch (err) { alert("Errore JSON."); } };
+            reader.readAsText(file); e.target.value = '';
         };
 
-        // --- FUNZIONE CENTRALE PER RICOSTRUIRE L'INTERA UI ---
+        // --- RICOSTRUZIONE UI ---
         function rebuildTableFromData(data) {
-            // 1. Svuota e rigenera Header (Colonne)
             const theadTr = document.querySelector('thead tr');
             theadTr.innerHTML = '<th class="p-4 font-bold w-48 border-r border-gray-200 bg-gray-100 sticky-col shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Categoria</th>';
-            
             data.columns.forEach(col => {
-                const th = document.createElement('th');
-                th.className = "p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[150px]";
-                
-                let thHtml = `<div class="flex flex-col items-center justify-center">`;
-                thHtml += `<span class="col-name text-gray-700">${col.name}</span>`;
-                thHtml += `<span class="col-sub text-[10px] font-normal text-gray-400 mt-1">${col.sub}</span>`;
-                thHtml += `</div>`;
-                thHtml += `<div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">`;
-                thHtml += `<button onclick="window.moveCol(this, -1)" class="text-gray-400 hover:text-blue-600">&lt;</button>`;
-                thHtml += `<button onclick="window.openEditColModal(this)" class="text-gray-400 hover:text-green-600 px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>`;
-                thHtml += `<button onclick="window.moveCol(this, 1)" class="text-gray-400 hover:text-blue-600">&gt;</button>`;
-                thHtml += `</div>`;
-                
-                th.innerHTML = thHtml;
+                const th = document.createElement('th'); th.className = "p-4 font-semibold text-center border-r border-gray-200 relative group min-w-[150px]";
+                th.innerHTML = `<div class="flex flex-col items-center justify-center"><span class="col-name text-gray-700">${col.name}</span><span class="col-sub text-[10px] font-normal text-gray-400 mt-1">${col.sub}</span></div>
+                    <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5 z-10 transition">
+                        <button onclick="window.moveCol(this, -1)" class="text-gray-400 hover:text-blue-600">&lt;</button>
+                        <button onclick="window.openEditColModal(this)" class="text-gray-400 hover:text-green-600 px-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                        <button onclick="window.moveCol(this, 1)" class="text-gray-400 hover:text-blue-600">&gt;</button>
+                    </div>`;
                 theadTr.appendChild(th);
             });
-
-            // 2. Svuota e rigenera Body (Righe e Celle)
-            const tbody = document.querySelector('tbody'); 
-            tbody.innerHTML = '';
-            
+            const tbody = document.querySelector('tbody'); tbody.innerHTML = '';
             data.rows.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-200 transition duration-150";
-                
-                const tdCat = document.createElement('td');
-                tdCat.className = `p-4 font-bold text-${row.color}-700 bg-${row.color}-50/50 border-r border-gray-200 sticky-col shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`;
-                tdCat.innerText = row.name;
-                tr.appendChild(tdCat);
-                
-                for(let i = 0; i < data.columns.length; i++) {
-                    const td = document.createElement('td');
-                    td.className = "border-r border-gray-200 align-top p-2";
-                    td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>';
-                    tr.appendChild(td);
-                }
-                
+                const tr = document.createElement('tr'); tr.className = "border-b border-gray-200 transition duration-150";
+                const tdCat = document.createElement('td'); tdCat.className = `p-4 font-bold text-${row.color}-700 bg-${row.color}-50/50 border-r border-gray-200 sticky-col shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`;
+                tdCat.innerText = row.name; tr.appendChild(tdCat);
+                for (let i = 0; i < data.columns.length; i++) { const td = document.createElement('td'); td.className = "border-r border-gray-200 align-top p-2"; td.innerHTML = '<div class="drop-zone flex flex-col gap-2 h-full min-h-[80px]"></div>'; tr.appendChild(td); }
                 tbody.appendChild(tr);
             });
-
-            // 3. Pulisce la bacheca (Backlog)
-            const backlog = document.getElementById('backlog');
-            const existingTasks = backlog.querySelectorAll('.draggable');
-            existingTasks.forEach(el => el.remove());
-
-            // 4. Distribuisce tutti i Task
+            const backlog = document.getElementById('backlog'); backlog.querySelectorAll('.draggable').forEach(el => el.remove());
             data.tasks.forEach(task => {
-                const div = document.createElement('div'); 
-                div.id = task.id; 
-                div.draggable = true;
-                
-                const borderClass = task.color === 'gray' ? 'border-gray-300' : `border-${task.color}-200`;
-                const leftClass = task.color === 'gray' ? 'border-l-gray-500' : `border-l-${task.color}-500`;
-                
-                div.className = `draggable bg-white border ${borderClass} p-3 rounded shadow-sm border-l-4 ${leftClass} relative group min-w-[150px]`;
-                div.setAttribute('data-color', task.color);
-                div.innerHTML = window.getTaskHTML(task.id, task.name, task.sub, task.color);
-                
-                if (task.location.type === 'backlog') {
-                    backlog.appendChild(div);
-                } else if (task.location.type === 'grid') {
-                    const targetTr = tbody.children[task.location.rowIndex];
-                    if (targetTr) {
-                        const targetTd = targetTr.children[task.location.colIndex + 1]; // +1 per la colonna Categorie
-                        if (targetTd) {
-                            const dropZone = targetTd.querySelector('.drop-zone');
-                            if (dropZone) {
-                                dropZone.appendChild(div);
-                            }
-                        }
-                    }
-                }
+                const div = document.createElement('div'); div.id = task.id; div.draggable = true;
+                const bC = task.color === 'gray' ? 'gray-300' : `${task.color}-200`;
+                const lC = task.color === 'gray' ? 'gray-500' : `${task.color}-500`;
+                div.className = `draggable bg-white border border-${bC} p-3 rounded shadow-sm border-l-4 border-l-${lC} relative group min-w-[150px]`;
+                div.setAttribute('data-color', task.color); div.innerHTML = window.getTaskHTML(task.id, task.name, task.sub, task.color);
+                if (task.location.type === 'backlog') backlog.appendChild(div);
+                else { const targetTd = tbody.children[task.location.rowIndex]?.children[task.location.colIndex + 1]; if (targetTd) targetTd.querySelector('.drop-zone').appendChild(div); }
             });
-            
-            // Riattiva Event Listeners e Controlli Visuali
-            window.initDragAndDrop(); 
-            window.checkBacklogEmpty();
+            window.initDragAndDrop(); window.checkBacklogEmpty();
         }
 
         window.checkBacklogEmpty = function() {
-            const backlog = document.getElementById('backlog');
-            const emptyText = document.getElementById('backlog-empty-text');
-            const taskCount = backlog.querySelectorAll('.draggable').length;
-            
-            if (taskCount > 0) {
-                emptyText.style.display = 'none';
-            } else {
-                emptyText.style.display = 'block';
-            }
+            document.getElementById('backlog-empty-text').style.display = document.getElementById('backlog').querySelectorAll('.draggable').length > 0 ? 'none' : 'block';
         };
 
-        // --- AVVIO DELL'APP AL CARICAMENTO DELLA PAGINA ---
-        document.addEventListener('DOMContentLoaded', () => { 
-            window.initDragAndDrop(); 
-            window.checkBacklogEmpty(); 
-        });
-
+        document.addEventListener('DOMContentLoaded', () => { window.initDragAndDrop(); window.checkBacklogEmpty(); });
     </script>
 </body>
 </html>
