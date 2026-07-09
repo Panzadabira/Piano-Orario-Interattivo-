@@ -44,25 +44,6 @@ L'intero sistema è ingegnerizzato all'interno di un unico file altamente ottimi
 
 ---
 
-## Guida all'Avvio Rapido
-
-Poiché il tool è una Single-Page Application basata su moduli ES6, l'installazione richiede zero passaggi. 
-
-1. **Clona o Scarica il Repository:**
-   ```bash
-   git clone [https://github.com/Panzadabira/NOME-REPO-QUI.git](https://github.com/Panzadabira/NOME-REPO-QUI.git)
-   cd NOME-REPO-QUI
-Esecuzione Locale:
-Per motivi di sicurezza legati ai moduli CORS di JavaScript (type="module"), apri il file HTML tramite un semplice server locale.
-
-Se usi VS Code: Installa ed avvia l'estensione Live Server.
-Se usi Python: Esegui da terminale:
-
-Bash
-python -m http.server 8000
-Quindi apri il browser su http://localhost:8000.
-
-```
 
  Guida all'Uso
 1. Gestione dei Task
