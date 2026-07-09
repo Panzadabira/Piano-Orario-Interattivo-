@@ -45,7 +45,7 @@ The entire engine is streamlined into a highly optimized, dependency-light archi
 ---
 
 
- User Guide
+##  User Guide
 1. Task Management
 Creation: Click the blue + New Task button. Assign a title, an optional subtitle (e.g., specific tags, dates, or assignees), and select a color category.
 
@@ -57,9 +57,14 @@ Use the + Column and + Row controls to expand your matrix. You can insert new el
 3. The Backlog Board
 The bottom grey area (Unassigned Tasks) serves as an operational holding zone. Drop tasks here when they are postponed, paused, or awaiting scheduling into a definitive time slot.
 
- Data Security & Persistence
+---
+
+##  Data Security & Persistence
+
 The planner employs a multi-tiered persistence strategy:
 
 Live Cloud State: Data is continuously synced to a secure, isolated Firestore document path: artifacts/{appId}/public/data/planner_state/main.
 
 Offline Data Portability: Download a complete snapshot of your database at any time by clicking Export. The generated JSON payload maps exact spatial grid coordinates (rowIndex, colIndex) for every task, ensuring seamless data restoration across different machines.
+
+---
