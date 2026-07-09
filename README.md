@@ -5,61 +5,61 @@
   <img src="https://img.shields.io/badge/Architecture-Single_Page_App-8A2BE2?style=for-the-badge" alt="SPA">
 </p>
 
-# Gestore Piano Orario
-> *Un pianificatore temporale interattivo e flessibile con architettura di sincronizzazione ibrida (Cloud Firestore + Fallback Locale JSON) e interfaccia Drag-and-Drop.*
+# Universal Interactive Timeline & Workflow Planner
+> *A flexible, drag-and-drop workflow and scheduling engine featuring hybrid cloud synchronization (Firebase Firestore + Local JSON Fallback).*
 
 ---
 
-## Panoramica del Progetto
+## Project Overview
 
-Il **Gestore Piano Orario** è un'applicazione web autonoma (Single-Page Application) pensata per la gestione visuale di flussi di lavoro, orari e compiti complessi.
+The **Universal Timeline & Workflow Planner** is a standalone Single-Page Application (SPA) engineered for visualizing complex workflows, schedules, and multi-team operations.
 
-A differenza dei classici fogli di calcolo statichi, questo strumento unisce l'immediata ergonomia di una **bacheca Kanban interattiva** alla potenza di una **griglia temporale multidimensionale**. È progettato per garantire continuità operativa totale grazie a un sistema di salvataggio intelligente che connette in tempo reale i dati sul Cloud, ma è in grado di funzionare perfettamente anche offline tramite l'importazione e l'esportazione di file JSON.
-
----
-
-## Funzionalità Principali
-
-* 🖱️ **Drag-and-Drop Fluido & Naturale:** Sposta liberamente i task tra le diverse fasce orarie e categorie o rimettili temporaneamente in pausa nella bacheca di Backlog integrata.
-* ☁️ **Sincronizzazione Cloud in Tempo Reale:** Connessione nativa a **Firebase Firestore**. Ogni modifica alla griglia, spostamento di un task o creazione di una colonna viene salvata istantaneamente nel cloud con un indicatore di stato di connessione visivo (*Ping telematico*).
-* 🛡️ **Architettura di Fallback Resiliente:** Se la connessione al cloud non è disponibile, il sistema tenta automaticamente di caricare lo stato locale tramite il file `piano_orario.json`, garantendo zero tempi di inattività.
-* 📊 **Griglia Altamente Dinamica:**
-  * **Aggianta & Modifica Colonne:** Crea nuove fasce orarie (es. *RS 4*, *RS 8*), modificale o riordinale trascinandole visivamente.
-  * **Gestione Righe per Categoria:** Suddividi il piano per aree tematiche colorate (es. *Personale*, *Istruzione*, *Logistica*, *Condotta*, *Urgenza*).
-* 💾 **Backup & Portabilità (Export / Import JSON):** Esporta l'intera struttura (task, posizioni, righe e colonne) in un file `.json` portatile con un solo clic o importa un piano di backup per ripristinare uno stato precedente.
-* 🎨 **UI / UX Moderna:** Costruito con **Tailwind CSS**, dotato di colonne bloccate per lo scorrimento orizzontale (*Sticky Header/Column*) e codice colore semantico per identificare visivamente le priorità.
+Moving beyond static spreadsheets, this tool merges the instant ergonomics of an **interactive Kanban board** with the structure of a **multi-dimensional time grid**. It is built for absolute operational continuity: utilizing intelligent live cloud sync for collaborative environments, while maintaining full offline capability and resilience through native JSON state import and export.
 
 ---
 
-## Stack Tecnologico & Architettura
+## Core Features
 
-L'intero sistema è ingegnerizzato all'interno di un unico file altamente ottimizzato che non richiede complessi processi di build o server locali di backend:
+*  **Fluid Drag-and-Drop Ergonomics:** Effortlessly move tasks across time slots, operational columns, and categories, or temporarily park them in the dedicated backlog area.
+*  **Real-Time Cloud Synchronization:** Natively connected to **Firebase Firestore**. Every grid modification, task re-ordering, or structural change is saved instantly to the cloud, complete with a real-time connection status telemetry ping.
+*  **Resilient Fallback Architecture:** If cloud connectivity is unavailable or disabled, the system automatically falls back to loading local state via a JSON schema, guaranteeing zero operational downtime.
+*  **Highly Dynamic Grid Matrix:**
+  * **Custom Time Slots / Columns:** Dynamically add, edit, or reorder temporal columns (e.g., *Phase 1*, *Q2*, *Morning Shift*) directly from the UI.
+  * **Categorized Operational Rows:** Segment your schedule by color-coded themes and departments (e.g., *Operations*, *Logistics*, *Training*, *Urgent*, *Management*).
+*  **Total Portability (JSON Export / Import):** Export your entire grid architecture—including tasks, coordinates, rows, and columns—into a clean, portable `.json` file with a single click, or restore previous states instantly.
+*  **Modern UI / UX:** Built with **Tailwind CSS**, featuring sticky headers and columns for seamless horizontal scrolling across large datasets, and intuitive semantic color-coding.
 
-| Componente | Tecnologia Utilizzata |
+---
+
+## Tech Stack & Architecture
+
+The entire engine is streamlined into a highly optimized, dependency-light architecture that requires no complex build pipelines or local backend servers:
+
+| Component | Technology / Method |
 | :--- | :--- |
-| **Struttura & Core Logic** | HTML5 / Vanilla JavaScript (ES6+ Modules) |
-| **Styling & Design System** | Tailwind CSS (tramite CDN ad alte prestazioni) & Inter Font |
+| **Core Logic & Structure** | HTML5 / Vanilla JavaScript (ES6+ Modules) |
+| **Styling & Design System** | Tailwind CSS (via high-performance CDN) & Inter Font |
 | **Database & Auth** | Google Firebase (Firestore Database + Anonymous Authentication) |
-| **Interattività** | Native HTML5 Drag and Drop API |
+| **Interactivity** | Native HTML5 Drag and Drop API |
 
 ---
 
 
- Guida all'Uso
-1. Gestione dei Task
-Creazione: Clicca sul pulsante blu + Nuovo Task. Assegna un titolo, un sottotitolo opzionale (es. il giorno o il blocco di riferimento) e una categoria di colore.
+ User Guide
+1. Task Management
+Creation: Click the blue + New Task button. Assign a title, an optional subtitle (e.g., specific tags, dates, or assignees), and select a color category.
 
-Modifica ed Eliminazione: Passa il mouse su un qualsiasi task presente nella griglia o nel Backlog; clicca sull'icona della matita in alto a destra per modificarne il contenuto o eliminarlo definitivamente.
+Editing & Deletion: Hover over any task on the grid or in the backlog; click the pencil icon in the top-right corner to modify its properties or remove it from the board.
 
-2. Personalizzazione della Griglia
-Usando i pulsanti + Colonna e + Riga puoi espandere la matrice temporale posizionando il nuovo elemento esattamente dove desideri (es. "Prima di: RS 13" o "Alla fine").
+2. Grid Customization
+Use the + Column and + Row controls to expand your matrix. You can insert new elements precisely where needed (e.g., "Before: Phase 2" or "At the end").
 
-3. Bacheca Backlog
-L'area grigia inferiore (Task non assegnati) funziona come una zona di parcheggio. Puoi trascinarvi i compiti temporaneamente sospesi o in attesa di essere programmati in una fascia oraria definitiva.
+3. The Backlog Board
+The bottom grey area (Unassigned Tasks) serves as an operational holding zone. Drop tasks here when they are postponed, paused, or awaiting scheduling into a definitive time slot.
 
- Sicurezza & Persistenza dei Dati
-Il piano utilizza una strategia di persistenza multi-livello:
+ Data Security & Persistence
+The planner employs a multi-tiered persistence strategy:
 
-Live Cloud State: I dati vengono iniettati in tempo reale su un percorso Firestore sicuro e isolato: artifacts/{appId}/public/data/planner_state/main.
+Live Cloud State: Data is continuously synced to a secure, isolated Firestore document path: artifacts/{appId}/public/data/planner_state/main.
 
-Offline Data Portability: Puoi scaricare un'istantanea del database in qualsiasi momento cliccando su Esporta. Il file generato conterrà l'esatta mappatura delle coordinate della matrice (rowIndex, colIndex) per ogni task.
+Offline Data Portability: Download a complete snapshot of your database at any time by clicking Export. The generated JSON payload maps exact spatial grid coordinates (rowIndex, colIndex) for every task, ensuring seamless data restoration across different machines.
