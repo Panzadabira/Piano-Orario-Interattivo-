@@ -5,14 +5,14 @@
   <img src="https://img.shields.io/badge/Architecture-Single_Page_App-8A2BE2?style=for-the-badge" alt="SPA">
 </p>
 
-# Gestore Piano Orario RS
+# Gestore Piano Orario
 > *Un pianificatore temporale interattivo e flessibile con architettura di sincronizzazione ibrida (Cloud Firestore + Fallback Locale JSON) e interfaccia Drag-and-Drop.*
 
 ---
 
 ## Panoramica del Progetto
 
-Il **Gestore Piano Orario RS** è un'applicazione web autonoma (Single-Page Application) pensata per la gestione visuale di flussi di lavoro, orari e compiti complessi.
+Il **Gestore Piano Orario** è un'applicazione web autonoma (Single-Page Application) pensata per la gestione visuale di flussi di lavoro, orari e compiti complessi.
 
 A differenza dei classici fogli di calcolo statichi, questo strumento unisce l'immediata ergonomia di una **bacheca Kanban interattiva** alla potenza di una **griglia temporale multidimensionale**. È progettato per garantire continuità operativa totale grazie a un sistema di salvataggio intelligente che connette in tempo reale i dati sul Cloud, ma è in grado di funzionare perfettamente anche offline tramite l'importazione e l'esportazione di file JSON.
 
